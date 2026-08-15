@@ -2,60 +2,121 @@
 
 Find the warm paths in your own network into the company you just applied to, and stop spending on the cold ones.
 
-**Status: v0, private, own use.** Scripts over the official LinkedIn data export. Nothing here talks to LinkedIn. See [the spec](../warm-path-spec.md) for the full plan.
+Most "networking" tools either fake your network (matching you to strangers by profile affinity), track contacts you already found, or do real graph work at sales-team prices. Warm Path reads the LinkedIn export you already own, scores every relationship for real strength from your message history, and per application tells you which pairs are worth spending on and which are not. It never touches LinkedIn.
 
-## Why
+**Status:** v1. Works end to end on a real export; ships with a synthetic one so you can try it in a minute.
 
-Networking into a visible company fails at the judging step, not the finding step. You can open 200 profiles at the target and read every mutual, but you cannot sustain that past a few applications, and by application eight the process degrades to blind connection requests. Existing tools either fake your network (profile-affinity matching), track contacts you already found, or do real graph work at sales-team prices.
+## The problem, in the user's words
 
-Warm Path ingests your own export, scores every relationship for real strength from your message history, and per target tells you which pairs are worth spending on and which are not.
+> I apply to a visible AI company. I open the company page, 200 people. Each one has between 2 and 80 mutuals with me. For every one I have to judge two things: is this mutual actually close enough to me to make an intro, and is this person actually in a seat where they could champion me or at least route me? I can do that for one application. By application eight it degrades to connection requests with no note, and recruiters who ignore me.
 
-## What it does not do
+The judging step is the bottleneck, not the finding step. That is what this tool does.
 
-No auto-connect, no auto-DM, no scraping, no browser automation, no bulk email finding. LinkedIn restricts accounts that use those tools, and the collateral is your account. The tool reads your export; you send every message.
+## Three real cases
 
-## Quickstart
+Built and tested on the author's own network (4,606 connections, 37k messages, 1,082 two-way threads). Names withheld; the shapes are exact.
 
-1. On LinkedIn: Settings & Privacy, Data privacy, Get a copy of your data. Request the full archive (you want `messages.csv` and `Positions.csv`, not just Connections). It arrives by email as a ZIP.
-2. Then:
+| Case | What the network had | What the tool said | What happened |
+|---|---|---|---|
+| Company A, applied twice before | One strong ex-colleague (interviewed the author years ago), two recruiters who had ignored two prior notes, one thin peer | `spend` on the ex-colleague; `skip` both recruiters, named as already-tried; `forward-note` for the peer | Note to the ex-colleague sent day one. Recruiter spend stopped. |
+| Company B, hot lab | Two connections, both cold, neither in function | `cold` for both, with the explicit "one cheap message, then move on"; empty-state routes shown | No spend. Discovery instead. |
+| Company C, new startup | Zero connections under the current name | Empty state, then `--alias` (the company had renamed) found nothing, then `discover` returned the Head of Talent, two recruiters, and the CEO from a public people index | Cold outreach to the right people, with the disclosure-not-ask draft shape. |
+
+A fourth case, a peer at a startup the author had just applied to and did not know how to message without it reading as "hey I applied, let's chat": the `cold` draft shape (specific reason, real question, one-clause disclosure, small ask) is what went out. Outcomes are tracked in `outcomes` and this table will be updated honestly, including the misses.
+
+## What it does
+
+- `ingest` the official LinkedIn export (ZIP or folder). Message content is read for counts and dates and never stored.
+- `people`: every relationship scored 0 to 100 with the reasons printed. Tiers: strong, warm, weak, cold-unanswered (you wrote, they never replied), cold-untested.
+- `target "Company" --function cs`: everyone you know at the target, each pair scored on both sides. Mutual strength (will they help?) from the export; target strength (can they champion?) from their title. Verdicts: `spend`, `ask-for-routing`, `forward-note`, `cold`, `skip`, with the weak side named. `--alias` for renames and parents, `--orbit` for adjacent companies to seed second-degree asks.
+- `draft "Name" --target X`: a message scaffold keyed to the verdict. Optional Claude polish with `--llm`.
+- `discover "Company" --function cs`: recruiters, likely hiring managers, and in-function peers at the target from Exa's people index. Public profile URLs. This is the empty state's answer.
+- `log` and `outcomes`: what you sent, in what shape, and what came back. The honest record, and the data the scorer will eventually learn from.
+
+## What it deliberately does not do
+
+No auto-connect, no auto-DM, no scraping, no browser automation, no bulk email finding, no auto-apply, no resume tailoring, no job discovery. LinkedIn restricts accounts that use automation, and the collateral is your account; scraper vendors get sued out of existence. Other tools do those things. This one does paths. The tool reads your export; you send every message.
+
+## Quickstart with the synthetic dataset
+
+Python 3.10+, standard library only for the core.
 
 ```bash
-python3 -m warmpath ingest path/to/export.zip
-python3 -m warmpath people --top 30
-python3 -m warmpath target "Lovable" --function cs
-python3 -m warmpath target "Ode with Anthropic" --alias "Fractional AI" --function cs --orbit Anthropic --orbit Deloitte
-python3 -m warmpath draft "Ryan Boyd" --target Simile --function cs --role "Deployment Strategist" --hook "why you connected"
-python3 -m warmpath discover "Ode with Anthropic" --alias "Fractional AI" --function cs
-python3 -m warmpath discover Simile --about "synthetic-user AI startup, San Francisco" --function cs
+git clone https://github.com/meagan-glenn/warm-path && cd warm-path
+python3 -m warmpath demo
 ```
 
-Python 3.10+, standard library only for the core. Everything is written to `data/warmpath.db`, which is gitignored along with the export.
+That writes a fictional export to `demo/export/` (122 people, 16 invented companies, a persona named Sam Rivera) and ingests it into `data/demo.db`. Then:
 
-Two optional extras, both off until you install them and add a key to `./.env` (also gitignored):
+```bash
+python3 -m warmpath --db data/demo.db people --top 15
+python3 -m warmpath --db data/demo.db target "Corvid AI" --function cs          # warm case
+python3 -m warmpath --db data/demo.db target Halberd --function cs               # cold case
+python3 -m warmpath --db data/demo.db target Tessellate --function cs            # zero case, empty state
+python3 -m warmpath --db data/demo.db target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian
+python3 -m warmpath --db data/demo.db draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"
+```
 
-- `pip install anthropic` plus `ANTHROPIC_API_KEY` (or `ant auth login`) turns `draft --llm` from a scaffold into a finished message. Model: `claude-opus-5`.
-- `pip install exa-py` plus `EXA_API_KEY` makes `discover` return recruiters, likely hiring managers, and in-function peers at a company from Exa's people index. Public profile URLs, opened by you. Nothing touches LinkedIn.
+Tests: `python3 -m unittest discover tests`.
 
-## Drafts
+### With your own export
 
-`draft` picks the message shape from the verdict. The shape that worked in practice for a cold, in-function peer, and the default for `cold` and `forward-note`:
+1. LinkedIn: Settings & Privacy, Data privacy, Get a copy of your data. Request the **full archive** (you want `messages.csv` and `Positions.csv`, not just Connections). It arrives by email as a ZIP, usually within a day.
+2. `python3 -m warmpath ingest path/to/export.zip`, then the same commands without `--db` (default is `data/warmpath.db`). `data/`, `*.zip`, `*.db`, and `.env` are gitignored.
 
-1. One specific reason you connected, not "love what you're building."
+Two optional extras, both off until you install them and put a key in `./.env`:
+
+- `pip install exa-py` plus `EXA_API_KEY` turns on `discover`. Use `--about "one-line description"` when the company name is a common word.
+- `pip install anthropic` plus `ANTHROPIC_API_KEY` turns `draft --llm` from a scaffold into a finished message (model `claude-opus-5`).
+
+## How scoring works
+
+**Mutual strength**, 0 to 100, from the export alone: two-way thread exists (the single strongest cut), message volume with a per-day cap so support bursts do not dominate, thread span, recency, written recommendations, shared former employer, invitation direction, endorsements. Unanswered outreach is a penalty and a flag.
+
+**Target strength**, from their title: recruiter or TA (a route to process, not advocacy), senior in your function, senior elsewhere, in-function peer, other.
+
+The pair verdict names the weak side, because the ask differs. Strong relationship in the wrong seat: "who runs hiring for this?" Right seat with a thin relationship: "would you forward a two-line note?" Recruiter who ignored you twice: stop.
+
+## Draft shapes
+
+The one that worked for a cold in-function peer, and the default for `cold` and `forward-note`:
+
+1. One specific reason you connected. Not "love what you're building."
 2. One genuine question about their work.
 3. The application in a single transparent clause, explicitly not the ask.
 4. A small ask, their call: answer here, or 15 minutes.
 
-`ask-for-routing` (real relationship, wrong seat) asks who owns the req. `spend` (real relationship, right seat) asks for a read on the team and lets them offer to advocate.
+`ask-for-routing` asks who owns the req. `spend` asks for a read on the team and lets them offer to advocate. Every draft says exactly what it is doing and why; the LLM only tightens wording.
 
-## How scoring works
+## Architecture
 
-**Mutual strength** (will this person help me?), 0 to 100, from the export alone: two-way thread exists, message volume with a per-day cap so support bursts do not dominate, thread span, recency, written recommendations, shared former employer, invitation direction, endorsements. Unanswered outreach is a penalty and a flag. Every reason is printed next to the score.
+```
+LinkedIn export (zip)                    Exa people index (optional)
+        |                                          |
+     ingest.py  ---> data/warmpath.db <---     discover.py
+        |              (local SQLite)              |
+     score.py   mutual strength, tiers             |
+        |                                          |
+    targets.py  pair verdicts per company  <-------+  (same title classifier)
+        |
+    drafts.py   verdict-keyed scaffolds, optional Claude
+        |
+   outcomes.py  what was sent, what happened
+```
 
-**Target strength** (can this person champion me?), from their title: recruiter or TA (a route to process, not advocacy), senior in your function, senior elsewhere, in-function peer, other.
+Everything is stdlib Python and one SQLite file. Nothing leaves the machine unless you turn on an extra, and even then only a company name and a role go to Exa, and only a draft prompt (no message history) goes to Anthropic.
 
-The output names the weak side of every pair, because the ask is different: strong relationship in the wrong seat means "who runs hiring for this?", right seat with a thin relationship means "would you forward a two-line note?"
+## Red lines, and why
 
-## Roadmap
+- Never act on LinkedIn: no connecting, messaging, or scraping. Bulk data comes only from your own export and third-party indexes that maintain their own coverage.
+- Message content is never stored, only per-person counts and dates.
+- No real network data in this repo, ever. The demo dataset is generated and every name in it is invented.
 
-- v1 (in progress): drafts and discovery are in. Still to do: synthetic demo dataset, outcome logging, clean public release.
-- v2: guided second-degree flow, optional single-click mutuals capture, relay orchestration across multi-hop intros.
+The full research behind these (what happened to the scraper vendors, why the automation extensions get accounts restricted, what the paid graph tools cost) is in [docs/spec.md](docs/spec.md).
+
+## Roadmap and open questions
+
+- **Second degree.** No compliant data feed exists for "who does my strong contact know at the target." Planned: a guided flow that deep-links you into LinkedIn's own filtered search, and an optional, off-by-default, single-click capture of the mutuals list on the one profile you are looking at. That is where the 200-times-80 problem is actually solved, and it is a ToS gray zone, so it ships as a separate package with a blunt disclosure.
+- **Learning from outcomes.** The log exists; the scorer does not read it yet.
+- **User overrides.** "Close," "would vouch," "barely know," persisted, so a wrong score can be corrected once.
+- **Honest limit.** The tool cannot conjure paths that do not exist. For the hottest companies the answer is often "cold route only," and the best it can do is make the cold route a good one.
