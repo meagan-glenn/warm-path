@@ -16,6 +16,7 @@ from pathlib import Path
 from .discover import _load_dotenv, discover
 from .drafts import draft_for
 from .ingest import ingest
+from .outcomes import STATUSES, log, report
 from .score import score_all
 from .targets import build_report
 
@@ -117,6 +118,23 @@ def cmd_discover(a):
     print("\nThese are public profile URLs from a third-party index. Open them yourself; nothing here touched LinkedIn.")
 
 
+def cmd_log(a):
+    print(log(_conn(a.db), a.person, a.company, a.shape, a.channel, a.sent, a.status, a.note))
+
+
+def cmd_outcomes(a):
+    rows = report(_conn(a.db))
+    if not rows:
+        print("No outcomes logged yet. Use: python -m warmpath log \"Name\" --company X --shape cold --sent YYYY-MM-DD")
+        return
+    by = {}
+    for r in rows:
+        by[r[5]] = by.get(r[5], 0) + 1
+    print(f"{len(rows)} threads. " + ", ".join(f"{k}={v}" for k, v in sorted(by.items())) + "\n")
+    for person, company, shape, channel, sent, status, upd, note in rows:
+        print(f"{sent}  {status:12s} {person:22s} @ {company:16s} {shape:16s} {channel:9s} {note}")
+
+
 def main(argv=None):
     _load_dotenv()
     ap = argparse.ArgumentParser(prog="warmpath")
@@ -136,6 +154,12 @@ def main(argv=None):
     s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
     s.add_argument("--about", help="short description to disambiguate the company, e.g. 'synthetic-user AI startup, San Francisco'")
     s.add_argument("-n", type=int, default=8); s.set_defaults(fn=cmd_discover)
+
+    s = sub.add_parser("log"); s.add_argument("person"); s.add_argument("--company", required=True)
+    s.add_argument("--shape", choices=["spend", "ask-for-routing", "forward-note", "cold", "feedback", "other"])
+    s.add_argument("--channel", choices=["linkedin", "email", "video", "other"]); s.add_argument("--sent", help="YYYY-MM-DD")
+    s.add_argument("--status", choices=list(STATUSES)); s.add_argument("--note"); s.set_defaults(fn=cmd_log)
+    s = sub.add_parser("outcomes"); s.set_defaults(fn=cmd_outcomes)
 
     a = ap.parse_args(argv)
     a.fn(a)
