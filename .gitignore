@@ -1,0 +1,7 @@
+# Real export data never goes in the repo
+data/
+*.db
+*.zip
+__pycache__/
+*.pyc
+.venv/
