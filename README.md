@@ -25,7 +25,8 @@ python3 -m warmpath people --top 30
 python3 -m warmpath target "Lovable" --function cs
 python3 -m warmpath target "Ode with Anthropic" --alias "Fractional AI" --function cs --orbit Anthropic --orbit Deloitte
 python3 -m warmpath draft "Ryan Boyd" --target Simile --function cs --role "Deployment Strategist" --hook "why you connected"
-python3 -m warmpath discover "Ode with Anthropic" --function cs
+python3 -m warmpath discover "Ode with Anthropic" --alias "Fractional AI" --function cs
+python3 -m warmpath discover Simile --about "synthetic-user AI startup, San Francisco" --function cs
 ```
 
 Python 3.10+, standard library only for the core. Everything is written to `data/warmpath.db`, which is gitignored along with the export.

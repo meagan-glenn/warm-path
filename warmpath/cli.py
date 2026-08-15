@@ -97,7 +97,7 @@ def cmd_draft(a):
 
 
 def cmd_discover(a):
-    rep = discover(a.company, a.function, per_bucket=a.n)
+    rep = discover(a.company, a.function, per_bucket=a.n, aliases=a.alias, about=a.about or "")
     print(f"=== Discovery: {rep.company}" + (f"  (role function: {a.function})" if a.function else ""))
     if rep.note:
         print("\n" + rep.note)
@@ -107,7 +107,9 @@ def cmd_discover(a):
                           ("In-function peers", rep.peers)):
         print(f"\n{label}: {len(bucket)}")
         for d in bucket:
-            print(f"  {d.name:26s} {d.title[:44]:44s} {d.url}")
+            flag = "  " if d.at_target else "? "
+            print(f"  {flag}{d.name:24s} {d.title[:40]:40s} {('@ ' + d.company)[:24]:24s} {d.url}")
+    print("\n'?' = current company in the index does not match the target or its aliases; verify before reaching out.")
     print("\nThese are public profile URLs from a third-party index. Open them yourself; nothing here touched LinkedIn.")
 
 
@@ -126,7 +128,9 @@ def main(argv=None):
     s.add_argument("--alias", action="append", default=[]); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
     s.add_argument("--role"); s.add_argument("--hook"); s.add_argument("--channel", choices=["linkedin", "email"], default="linkedin")
     s.add_argument("--llm", action="store_true"); s.set_defaults(fn=cmd_draft)
-    s = sub.add_parser("discover"); s.add_argument("company"); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
+    s = sub.add_parser("discover"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
+    s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
+    s.add_argument("--about", help="short description to disambiguate the company, e.g. 'synthetic-user AI startup, San Francisco'")
     s.add_argument("-n", type=int, default=8); s.set_defaults(fn=cmd_discover)
 
     a = ap.parse_args(argv)
