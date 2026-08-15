@@ -45,6 +45,7 @@ class DiscoveryReport:
     recruiters: list[Discovered] = field(default_factory=list)
     leaders: list[Discovered] = field(default_factory=list)
     peers: list[Discovered] = field(default_factory=list)
+    roster: list[Discovered] = field(default_factory=list)   # fallback: everyone the index has at the company
     note: str = ""
 
 
@@ -137,11 +138,19 @@ def discover(company: str, role_function: str | None, per_bucket: int = 8, alias
         rep.peers = _search(exa, f"{fn_label} at {company_q}", per_bucket)
     else:
         rep.leaders = _search(exa, f"heads of department and directors at {company_q}", per_bucket)
-    # Re-classify with the function so peers vs leaders reads correctly, and flag company matches
-    for bucket in (rep.recruiters, rep.leaders, rep.peers):
+    def finalize(bucket):
         for d in bucket:
             d.role_class, d.role_reason, d.function_match = classify_role(d.title, role_function)
             c = _norm(d.company)
             # exact, or the alias plus a corporate suffix ("fractional ai inc"); never a bare substring or a longer name
             d.at_target = bool(c) and any(n == c or (c.startswith(n + " ") and c[len(n):].strip() in SUFFIXES) for n in names)
+
+    for bucket in (rep.recruiters, rep.leaders, rep.peers):
+        finalize(bucket)
+    # Small companies: role queries return near-misses. Fall back to a roster query and keep only confirmed matches.
+    seen = {d.url for b in (rep.recruiters, rep.leaders, rep.peers) for d in b if d.at_target}
+    if len(seen) < 4:
+        roster = _search(exa, f"people who work at {company_q}", max(10, per_bucket * 2))
+        finalize(roster)
+        rep.roster = [d for d in roster if d.at_target and d.url not in seen]
     return rep

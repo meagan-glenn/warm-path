@@ -109,6 +109,10 @@ def cmd_discover(a):
         for d in bucket:
             flag = "  " if d.at_target else "? "
             print(f"  {flag}{d.name:24s} {d.title[:40]:40s} {('@ ' + d.company)[:24]:24s} {d.url}")
+    if rep.roster:
+        print(f"\nRoster fallback (small company; everyone the index confirms at {rep.company}): {len(rep.roster)}")
+        for d in rep.roster:
+            print(f"    {d.name:24s} {d.title[:40]:40s} [{d.role_class}] {d.url}")
     print("\n'?' = current company in the index does not match the target or its aliases; verify before reaching out.")
     print("\nThese are public profile URLs from a third-party index. Open them yourself; nothing here touched LinkedIn.")
 
