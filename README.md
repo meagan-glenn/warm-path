@@ -24,9 +24,27 @@ python3 -m warmpath ingest path/to/export.zip
 python3 -m warmpath people --top 30
 python3 -m warmpath target "Lovable" --function cs
 python3 -m warmpath target "Ode with Anthropic" --alias "Fractional AI" --function cs --orbit Anthropic --orbit Deloitte
+python3 -m warmpath draft "Ryan Boyd" --target Simile --function cs --role "Deployment Strategist" --hook "why you connected"
+python3 -m warmpath discover "Ode with Anthropic" --function cs
 ```
 
-Python 3.10+, standard library only. Everything is written to `data/warmpath.db`, which is gitignored along with the export.
+Python 3.10+, standard library only for the core. Everything is written to `data/warmpath.db`, which is gitignored along with the export.
+
+Two optional extras, both off until you install them and add a key to `./.env` (also gitignored):
+
+- `pip install anthropic` plus `ANTHROPIC_API_KEY` (or `ant auth login`) turns `draft --llm` from a scaffold into a finished message. Model: `claude-opus-5`.
+- `pip install exa-py` plus `EXA_API_KEY` makes `discover` return recruiters, likely hiring managers, and in-function peers at a company from Exa's people index. Public profile URLs, opened by you. Nothing touches LinkedIn.
+
+## Drafts
+
+`draft` picks the message shape from the verdict. The shape that worked in practice for a cold, in-function peer, and the default for `cold` and `forward-note`:
+
+1. One specific reason you connected, not "love what you're building."
+2. One genuine question about their work.
+3. The application in a single transparent clause, explicitly not the ask.
+4. A small ask, their call: answer here, or 15 minutes.
+
+`ask-for-routing` (real relationship, wrong seat) asks who owns the req. `spend` (real relationship, right seat) asks for a read on the team and lets them offer to advocate.
 
 ## How scoring works
 
@@ -38,5 +56,5 @@ The output names the weak side of every pair, because the ask is different: stro
 
 ## Roadmap
 
-- v1: external recruiter and hiring-manager discovery (Exa / Apollo), drafts, synthetic demo dataset, clean release.
+- v1 (in progress): drafts and discovery are in. Still to do: synthetic demo dataset, outcome logging, clean public release.
 - v2: guided second-degree flow, optional single-click mutuals capture, relay orchestration across multi-hop intros.

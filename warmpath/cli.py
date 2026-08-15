@@ -3,6 +3,8 @@
   python -m warmpath ingest <export.zip|folder> [--db data/warmpath.db] [--me "First Last"]
   python -m warmpath people [--top 30] [--tier strong] [--company X]
   python -m warmpath target "Lovable" [--alias "Fractional AI"] [--function product] [--orbit Anthropic --orbit Cursor]
+  python -m warmpath draft "Ryan Boyd" --target Simile --role "Deployment Strategist" [--hook "..."] [--llm]
+  python -m warmpath discover "Ode with Anthropic" --function cs
 """
 
 from __future__ import annotations
@@ -11,6 +13,8 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+from .discover import _load_dotenv, discover
+from .drafts import draft_for
 from .ingest import ingest
 from .score import score_all
 from .targets import build_report
@@ -78,7 +82,37 @@ def cmd_target(a):
         print("No strong relationships in the listed orbit companies.")
 
 
+def cmd_draft(a):
+    rep = build_report(_conn(a.db), a.target, aliases=a.alias, role_function=a.function)
+    q = a.person.lower()
+    matches = [t for t in rep.matches if q in t.person.name.lower() or q in (t.person.url or "").lower()]
+    if not matches:
+        raise SystemExit(f"No connection matching '{a.person}' at {a.target}. Run `target` first to see who is there.")
+    t = matches[0]
+    print(f"To: {t.person.name}  |  {t.person.position} at {t.person.company}")
+    print(f"Verdict: {t.verdict.upper()}  ({t.ask})")
+    print(f"Channel: {a.channel}" + ("  |  LLM polish on" if a.llm else "  |  scaffold only, add --llm to finish it"))
+    print("-" * 60)
+    print(draft_for(t, a.role or "", a.hook or "", a.channel, a.llm))
+
+
+def cmd_discover(a):
+    rep = discover(a.company, a.function, per_bucket=a.n)
+    print(f"=== Discovery: {rep.company}" + (f"  (role function: {a.function})" if a.function else ""))
+    if rep.note:
+        print("\n" + rep.note)
+        return
+    for label, bucket in (("Recruiters / TA (route to process)", rep.recruiters),
+                          ("Leaders (likely hiring manager or skip)", rep.leaders),
+                          ("In-function peers", rep.peers)):
+        print(f"\n{label}: {len(bucket)}")
+        for d in bucket:
+            print(f"  {d.name:26s} {d.title[:44]:44s} {d.url}")
+    print("\nThese are public profile URLs from a third-party index. Open them yourself; nothing here touched LinkedIn.")
+
+
 def main(argv=None):
+    _load_dotenv()
     ap = argparse.ArgumentParser(prog="warmpath")
     ap.add_argument("--db", type=Path, default=DEFAULT_DB)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -88,6 +122,12 @@ def main(argv=None):
     s = sub.add_parser("target"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
     s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"]); s.add_argument("--orbit", action="append", default=[])
     s.set_defaults(fn=cmd_target)
+    s = sub.add_parser("draft"); s.add_argument("person"); s.add_argument("--target", required=True)
+    s.add_argument("--alias", action="append", default=[]); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
+    s.add_argument("--role"); s.add_argument("--hook"); s.add_argument("--channel", choices=["linkedin", "email"], default="linkedin")
+    s.add_argument("--llm", action="store_true"); s.set_defaults(fn=cmd_draft)
+    s = sub.add_parser("discover"); s.add_argument("company"); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
+    s.add_argument("-n", type=int, default=8); s.set_defaults(fn=cmd_discover)
 
     a = ap.parse_args(argv)
     a.fn(a)
