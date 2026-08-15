@@ -5,6 +5,7 @@
   python -m warmpath target "Lovable" [--alias "Fractional AI"] [--function product] [--orbit Anthropic --orbit Cursor]
   python -m warmpath draft "Ryan Boyd" --target Simile --role "Deployment Strategist" [--hook "..."] [--llm]
   python -m warmpath discover "Ode with Anthropic" --function cs
+  python -m warmpath demo            synthetic export + data/demo.db, no real data needed
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import argparse
 import sqlite3
 from pathlib import Path
 
+from .demo import build as build_demo
 from .discover import _load_dotenv, discover
 from .drafts import draft_for
 from .ingest import ingest
@@ -34,6 +36,23 @@ def cmd_ingest(a):
     stats = ingest(Path(a.export), a.db, me=a.me)
     print("Ingested:", ", ".join(f"{k}={v}" for k, v in stats.items()))
     print(f"Database: {a.db}  (local only; nothing was sent anywhere)")
+
+
+def cmd_demo(a):
+    out = Path(a.out)
+    stats = build_demo(out)
+    db = Path("data/demo.db") if a.db == DEFAULT_DB else a.db
+    db.parent.mkdir(parents=True, exist_ok=True)
+    ingest(out, db)
+    print(f"Synthetic export written to {out}/ ({stats['connections']} connections, {stats['messages']} messages, {stats['companies']} companies).")
+    print(f"Ingested into {db}. Every name and company is invented. Try:\n")
+    for c in (f'python -m warmpath --db {db} people --top 15',
+              f'python -m warmpath --db {db} target "Corvid AI" --function cs',
+              f'python -m warmpath --db {db} target Halberd --function cs',
+              f'python -m warmpath --db {db} target Tessellate --function cs',
+              f'python -m warmpath --db {db} target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian',
+              f'python -m warmpath --db {db} draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"'):
+        print("  " + c)
 
 
 def cmd_people(a):
@@ -142,6 +161,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("ingest"); s.add_argument("export"); s.add_argument("--me"); s.set_defaults(fn=cmd_ingest)
+    s = sub.add_parser("demo"); s.add_argument("--out", default="demo/export"); s.set_defaults(fn=cmd_demo)
     s = sub.add_parser("people"); s.add_argument("--top", type=int, default=30); s.add_argument("--tier"); s.add_argument("--company"); s.set_defaults(fn=cmd_people)
     s = sub.add_parser("target"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
     s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"]); s.add_argument("--orbit", action="append", default=[])

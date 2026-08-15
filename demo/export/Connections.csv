@@ -1,0 +1,126 @@
+Notes:
+"When exporting your connection data, you may notice that some of the email addresses are missing. (Synthetic demo file.)"
+
+First Name,Last Name,URL,Email Address,Company,Position,Connected On
+Priya,Okafor,https://www.linkedin.com/in/priya-okafor-demo,,Corvid AI,Head of Customer Success,02 Apr 2019
+Jordan,Lindqvist,https://www.linkedin.com/in/jordan-lindqvist-demo,,Corvid AI,Technical Recruiter,30 Jul 2026
+Marcus,Nakamura,https://www.linkedin.com/in/marcus-nakamura-demo,,Corvid AI,Senior Talent Partner,01 Aug 2026
+Elena,Castellano,https://www.linkedin.com/in/elena-castellano-demo,,Corvid AI,Customer Success Manager,12 Nov 2025
+Tobias,Whitfield,https://www.linkedin.com/in/tobias-whitfield-demo,,Corvid AI,Software Engineer,18 Feb 2023
+Aisha,Haddad,https://www.linkedin.com/in/aisha-haddad-demo,,Corvid AI,Account Executive,05 Jun 2024
+Noah,Brennan,https://www.linkedin.com/in/noah-brennan-demo,,Halberd,Staff Engineer,14 Sep 2022
+Ingrid,Sorensen,https://www.linkedin.com/in/ingrid-sorensen-demo,,Halberd,Marketing Manager,03 Aug 2026
+Diego,Adeyemi,https://www.linkedin.com/in/diego-adeyemi-demo,,Fractal Ops,Head of Deployments,20 May 2021
+Hana,Kowalski,https://www.linkedin.com/in/hana-kowalski-demo,,Northwind Ventures,Platform Lead,01 Oct 2020
+Wesley,Marchetti,https://www.linkedin.com/in/wesley-marchetti-demo,,Meridian,VP Customer Experience,11 Aug 2019
+Farah,Osei,https://www.linkedin.com/in/farah-osei-demo,,Meridian,Solutions Engineer,09 Jan 2024
+Wren,Quintero,https://www.linkedin.com/in/wren-quintero-demo,,Kestrel Analytics,Data Scientist,17 Jul 2021
+Owen,Sallow,https://www.linkedin.com/in/owen-sallow-demo,,Ferrous,Founder,16 Jan 2019
+Theo,Okafor,https://www.linkedin.com/in/theo-okafor-demo,,Quillon,Solutions Architect,22 Jul 2022
+Wesley,Abernathy,https://www.linkedin.com/in/wesley-abernathy-demo,,Brightwater,Product Manager,01 Jan 2021
+Sloane,Kowalski,https://www.linkedin.com/in/sloane-kowalski-demo,,Brightwater,Senior Customer Success Manager,06 Oct 2023
+Anika,Nakamura,https://www.linkedin.com/in/anika-nakamura-demo,,Brightwater,VP Sales,03 Jul 2021
+Nadia,Lockhart,https://www.linkedin.com/in/nadia-lockhart-demo,,Brightwater,Senior Customer Success Manager,17 Sep 2021
+Nadia,Sallow,https://www.linkedin.com/in/nadia-sallow-demo,,Ferrous,Engineer,08 Jul 2022
+Leila,Lockhart,https://www.linkedin.com/in/leila-lockhart-demo,,Ferrous,Founder,14 Dec 2023
+Hana,Nakamura,https://www.linkedin.com/in/hana-nakamura-demo,,Brightwater,Designer,04 Nov 2024
+Kofi,Okafor,https://www.linkedin.com/in/kofi-okafor-demo,,Bluecap Software,SDR,07 Dec 2019
+Owen,Okafor,https://www.linkedin.com/in/owen-okafor-demo,,Brightwater,Engineering Manager,03 Nov 2021
+Petra,Quintero,https://www.linkedin.com/in/petra-quintero-demo,,Nimbus Labs,Recruiter,17 Feb 2025
+Rowan,Abernathy,https://www.linkedin.com/in/rowan-abernathy-demo,,Vantage Point Media,Editor,16 Dec 2018
+Iris,Lindqvist,https://www.linkedin.com/in/iris-lindqvist-demo,,Quillon,Solutions Architect,28 Nov 2018
+Talia,Vance,https://www.linkedin.com/in/talia-vance-demo,,Ferrous,Head of Product,24 Jan 2022
+Greta,Castellano,https://www.linkedin.com/in/greta-castellano-demo,,Bluecap Software,Customer Success Director,05 Jun 2019
+Leo,Nakamura,https://www.linkedin.com/in/leo-nakamura-demo,,Brightwater,Data Analyst,07 Aug 2021
+Amara,Abernathy,https://www.linkedin.com/in/amara-abernathy-demo,,Meridian,VP Customer Experience,23 May 2025
+Priya,Quintero,https://www.linkedin.com/in/priya-quintero-demo,,Brightwater,Engineering Manager,10 Jul 2020
+Lucia,Abernathy,https://www.linkedin.com/in/lucia-abernathy-demo,,Northwind Ventures,Platform Lead,01 Oct 2025
+Maren,Abernathy,https://www.linkedin.com/in/maren-abernathy-demo,,Ferrous,Founder,15 Nov 2024
+Dev,Adeyemi,https://www.linkedin.com/in/dev-adeyemi-demo,,Larkspur Health,Customer Success Manager,15 Oct 2019
+Lucia,Ferreira,https://www.linkedin.com/in/lucia-ferreira-demo,,Brightwater,Product Manager,31 Mar 2025
+Zara,Ferreira,https://www.linkedin.com/in/zara-ferreira-demo,,Bluecap Software,Customer Success Director,16 Jan 2023
+Noah,Eriksen,https://www.linkedin.com/in/noah-eriksen-demo,,Larkspur Health,Product Manager,28 Jul 2023
+Felix,Grimaldi,https://www.linkedin.com/in/felix-grimaldi-demo,,Kestrel Analytics,Head of Data,23 Sep 2024
+Sanaa,Okafor,https://www.linkedin.com/in/sanaa-okafor-demo,,Brightwater,Data Analyst,13 Aug 2020
+Otto,Halvorsen,https://www.linkedin.com/in/otto-halvorsen-demo,,Northwind Ventures,Platform Lead,13 Aug 2020
+Yuki,Moreau,https://www.linkedin.com/in/yuki-moreau-demo,,Meridian,Director of Product,25 Sep 2018
+Rafael,Iyer,https://www.linkedin.com/in/rafael-iyer-demo,,Larkspur Health,Sales Director,31 Aug 2024
+Theo,Bakshi,https://www.linkedin.com/in/theo-bakshi-demo,,Brightwater,Account Manager,26 Jul 2020
+Rowan,Marchetti,https://www.linkedin.com/in/rowan-marchetti-demo,,Ridgeline Robotics,Recruiter,15 Jan 2024
+Petra,Novak,https://www.linkedin.com/in/petra-novak-demo,,Freelance,Fractional CMO,08 May 2024
+Sofia,Grimaldi,https://www.linkedin.com/in/sofia-grimaldi-demo,,Ferrous,Head of Product,31 Dec 2023
+Leo,Iyer,https://www.linkedin.com/in/leo-iyer-demo,,Bluecap Software,SDR,21 Jul 2022
+Jordan,Novak,https://www.linkedin.com/in/jordan-novak-demo,,Nimbus Labs,Growth Manager,30 Mar 2021
+Otto,Abernathy,https://www.linkedin.com/in/otto-abernathy-demo,,Larkspur Health,Customer Success Manager,11 Jul 2021
+Ravi,Osei,https://www.linkedin.com/in/ravi-osei-demo,,Larkspur Health,Sales Director,21 Aug 2025
+Kofi,Castellano,https://www.linkedin.com/in/kofi-castellano-demo,,Brightwater,Account Manager,08 Apr 2021
+Maren,Ferreira,https://www.linkedin.com/in/maren-ferreira-demo,,Ridgeline Robotics,Product Manager,12 Sep 2019
+Priya,Ferreira,https://www.linkedin.com/in/priya-ferreira-demo,,Vantage Point Media,Editor,06 Sep 2022
+Wren,Nakamura,https://www.linkedin.com/in/wren-nakamura-demo,,Vantage Point Media,Growth Lead,12 Mar 2025
+Emeka,Novak,https://www.linkedin.com/in/emeka-novak-demo,,Kestrel Analytics,Analyst,21 Apr 2024
+Felix,Lockhart,https://www.linkedin.com/in/felix-lockhart-demo,,Brightwater,Designer,03 Sep 2021
+Amara,Nakamura,https://www.linkedin.com/in/amara-nakamura-demo,,Freelance,Designer,12 Jun 2018
+Greta,Delgado,https://www.linkedin.com/in/greta-delgado-demo,,Ferrous,Head of Product,03 Aug 2025
+Ravi,Haddad,https://www.linkedin.com/in/ravi-haddad-demo,,Brightwater,VP Sales,11 Feb 2025
+Mila,Lockhart,https://www.linkedin.com/in/mila-lockhart-demo,,Quillon,Solutions Architect,09 Mar 2019
+Hana,Abernathy,https://www.linkedin.com/in/hana-abernathy-demo,,Ridgeline Robotics,Mechanical Engineer,22 Mar 2021
+Ezra,Duarte,https://www.linkedin.com/in/ezra-duarte-demo,,Larkspur Health,Customer Success Manager,16 Oct 2024
+Talia,Halvorsen,https://www.linkedin.com/in/talia-halvorsen-demo,,Brightwater,Senior Customer Success Manager,20 Apr 2026
+Ravi,Moreau,https://www.linkedin.com/in/ravi-moreau-demo,,Meridian,Customer Success Lead,20 Aug 2020
+Iris,Duarte,https://www.linkedin.com/in/iris-duarte-demo,,Brightwater,Senior Customer Success Manager,04 Sep 2021
+Leo,Grimaldi,https://www.linkedin.com/in/leo-grimaldi-demo,,Brightwater,Data Analyst,24 Mar 2026
+Owen,Iyer,https://www.linkedin.com/in/owen-iyer-demo,,Nimbus Labs,Co-founder & CEO,18 Dec 2019
+Jonas,Petrov,https://www.linkedin.com/in/jonas-petrov-demo,,Brightwater,Senior Customer Success Manager,09 Nov 2025
+Theo,Lockhart,https://www.linkedin.com/in/theo-lockhart-demo,,Quillon,Solutions Architect,10 Feb 2019
+Mila,Grimaldi,https://www.linkedin.com/in/mila-grimaldi-demo,,Bluecap Software,Product Marketing Manager,28 Oct 2021
+Rowan,Whitfield,https://www.linkedin.com/in/rowan-whitfield-demo,,Orenda,Director of Operations,02 Nov 2024
+Sanaa,Iyer,https://www.linkedin.com/in/sanaa-iyer-demo,,Northwind Ventures,Platform Lead,09 Aug 2021
+Sloane,Haddad,https://www.linkedin.com/in/sloane-haddad-demo,,Ridgeline Robotics,Mechanical Engineer,30 Jun 2026
+Sloane,Novak,https://www.linkedin.com/in/sloane-novak-demo,,Brightwater,Engineering Manager,10 Aug 2024
+Petra,Eriksen,https://www.linkedin.com/in/petra-eriksen-demo,,Brightwater,Product Manager,19 Apr 2020
+Leila,Iyer,https://www.linkedin.com/in/leila-iyer-demo,,Bluecap Software,Product Marketing Manager,23 Apr 2020
+Sloane,Castellano,https://www.linkedin.com/in/sloane-castellano-demo,,Orenda,Program Manager,26 Nov 2025
+Sofia,Brennan,https://www.linkedin.com/in/sofia-brennan-demo,,Nimbus Labs,Growth Manager,25 Jan 2026
+Rowan,Delgado,https://www.linkedin.com/in/rowan-delgado-demo,,Orenda,Program Manager,24 Mar 2026
+Bram,Lockhart,https://www.linkedin.com/in/bram-lockhart-demo,,Meridian,Solutions Engineer,27 Jul 2021
+Callum,Abernathy,https://www.linkedin.com/in/callum-abernathy-demo,,Bluecap Software,Implementation Manager,29 Sep 2019
+Otto,Adeyemi,https://www.linkedin.com/in/otto-adeyemi-demo,,Quillon,UX Researcher,03 Nov 2020
+Jonas,Novak,https://www.linkedin.com/in/jonas-novak-demo,,Bluecap Software,Customer Success Director,05 Nov 2020
+Otto,Iyer,https://www.linkedin.com/in/otto-iyer-demo,,Nimbus Labs,Product Lead,07 Apr 2020
+Mateo,Whitfield,https://www.linkedin.com/in/mateo-whitfield-demo,,Ferrous,Engineer,05 Mar 2025
+Callum,Nakamura,https://www.linkedin.com/in/callum-nakamura-demo,,Vantage Point Media,Growth Lead,04 Nov 2023
+Bea,Nakamura,https://www.linkedin.com/in/bea-nakamura-demo,,Brightwater,Data Analyst,12 Jan 2019
+Ingrid,Lockhart,https://www.linkedin.com/in/ingrid-lockhart-demo,,Freelance,Product Consultant,22 Oct 2024
+Nia,Moreau,https://www.linkedin.com/in/nia-moreau-demo,,Vantage Point Media,Growth Lead,08 Jun 2022
+Hana,Adeyemi,https://www.linkedin.com/in/hana-adeyemi-demo,,Brightwater,Senior Customer Success Manager,18 Apr 2021
+Noah,Vance,https://www.linkedin.com/in/noah-vance-demo,,Bluecap Software,SDR,18 Sep 2024
+Kofi,Haddad,https://www.linkedin.com/in/kofi-haddad-demo,,Kestrel Analytics,Analyst,13 Sep 2021
+Rowan,Vance,https://www.linkedin.com/in/rowan-vance-demo,,Larkspur Health,Product Manager,25 Oct 2021
+Leo,Osei,https://www.linkedin.com/in/leo-osei-demo,,Nimbus Labs,Recruiter,04 Jul 2025
+Jordan,Marchetti,https://www.linkedin.com/in/jordan-marchetti-demo,,Orenda,Program Manager,25 May 2021
+Mateo,Sallow,https://www.linkedin.com/in/mateo-sallow-demo,,Northwind Ventures,Platform Lead,25 Mar 2022
+Amara,Iyer,https://www.linkedin.com/in/amara-iyer-demo,,Ridgeline Robotics,Product Manager,24 Mar 2023
+Rowan,Nakamura,https://www.linkedin.com/in/rowan-nakamura-demo,,Brightwater,Product Manager,23 Dec 2023
+Noah,Nakamura,https://www.linkedin.com/in/noah-nakamura-demo,,Nimbus Labs,Product Lead,29 Jun 2023
+Nadia,Bakshi,https://www.linkedin.com/in/nadia-bakshi-demo,,Brightwater,Senior Customer Success Manager,21 Oct 2021
+Leila,Grimaldi,https://www.linkedin.com/in/leila-grimaldi-demo,,Nimbus Labs,Product Lead,27 Dec 2021
+Rowan,Quintero,https://www.linkedin.com/in/rowan-quintero-demo,,Bluecap Software,SDR,08 Sep 2018
+Nadia,Lindqvist,https://www.linkedin.com/in/nadia-lindqvist-demo,,Freelance,Designer,28 Oct 2018
+Farah,Petrov,https://www.linkedin.com/in/farah-petrov-demo,,Meridian,Solutions Engineer,11 Jul 2023
+Jordan,Moreau,https://www.linkedin.com/in/jordan-moreau-demo,,Meridian,Director of Product,14 Aug 2023
+Aisha,Abernathy,https://www.linkedin.com/in/aisha-abernathy-demo,,Brightwater,Account Manager,17 Oct 2025
+Ingrid,Delgado,https://www.linkedin.com/in/ingrid-delgado-demo,,Northwind Ventures,Partner,26 Sep 2022
+Talia,Petrov,https://www.linkedin.com/in/talia-petrov-demo,,Nimbus Labs,Growth Manager,27 Jul 2019
+Sanaa,Sallow,https://www.linkedin.com/in/sanaa-sallow-demo,,Nimbus Labs,Co-founder & CEO,24 Apr 2025
+Rafael,Lindqvist,https://www.linkedin.com/in/rafael-lindqvist-demo,,Brightwater,Designer,11 Apr 2024
+Dev,Kowalski,https://www.linkedin.com/in/dev-kowalski-demo,,Bluecap Software,Product Marketing Manager,25 Mar 2024
+Rowan,Tanaka,https://www.linkedin.com/in/rowan-tanaka-demo,,Brightwater,Designer,04 Jul 2023
+Jordan,Adeyemi,https://www.linkedin.com/in/jordan-adeyemi-demo,,Northwind Ventures,Principal,15 May 2026
+Jordan,Eriksen,https://www.linkedin.com/in/jordan-eriksen-demo,,Bluecap Software,Implementation Manager,11 May 2020
+Rowan,Ferreira,https://www.linkedin.com/in/rowan-ferreira-demo,,Nimbus Labs,Co-founder & CEO,11 Jul 2021
+Wren,Petrov,https://www.linkedin.com/in/wren-petrov-demo,,Vantage Point Media,Growth Lead,27 Dec 2020
+Jonas,Grimaldi,https://www.linkedin.com/in/jonas-grimaldi-demo,,Ferrous,Head of Product,09 Nov 2020
+Yuki,Sallow,https://www.linkedin.com/in/yuki-sallow-demo,,Brightwater,Data Analyst,19 Dec 2023
+Nia,Eriksen,https://www.linkedin.com/in/nia-eriksen-demo,,Ridgeline Robotics,Recruiter,21 Dec 2024
+Greta,Osei,https://www.linkedin.com/in/greta-osei-demo,,Meridian,VP Customer Experience,31 Jan 2025
+Priya,Nakamura,https://www.linkedin.com/in/priya-nakamura-demo,,Ridgeline Robotics,Recruiter,04 Sep 2023
