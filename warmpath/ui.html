@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warm Path</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --panel: #ffffff; --ink: #1c1b18; --muted: #6b6860; --line: #e4e1d8; --accent: #b3521f;
+    --spend: #2f7a4b; --route: #2c5f9e; --forward: #8a6d1e; --cold: #6b6860; --skip: #9b3b3b;
+    --chip: #efece4; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #171613; --panel: #201f1b; --ink: #ece9e1; --muted: #a39f94; --line: #34322c; --accent: #e07a44;
+            --spend: #6cc48e; --route: #7fb0ea; --forward: #dcb75c; --cold: #a39f94; --skip: #e08484; --chip: #2a2924; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 var(--sans); background: var(--bg); color: var(--ink); }
+  header { display: flex; align-items: baseline; gap: 18px; padding: 16px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  .chip { display: inline-block; background: var(--chip); border-radius: 999px; padding: 2px 9px; font-size: 12px; margin-right: 4px; color: var(--ink); }
+  nav { display: flex; gap: 4px; padding: 10px 24px 0; border-bottom: 1px solid var(--line); }
+  nav button { background: none; border: 0; padding: 8px 12px; font: inherit; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  nav button.on { color: var(--ink); border-bottom-color: var(--accent); }
+  main { padding: 20px 24px 60px; max-width: 1180px; }
+  section { display: none; } section.on { display: block; }
+  form.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 18px; }
+  label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 4px; }
+  input, select, textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+  input { min-width: 160px; }
+  button.go { background: var(--accent); color: white; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  button.ghost { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; font-size: 13px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 2px; font-size: 15px; }
+  .card .sub { color: var(--muted); font-size: 13px; }
+  .badge { font-size: 11px; font-weight: 600; letter-spacing: .4px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; color: white; display: inline-block; margin-bottom: 8px; }
+  .b-spend { background: var(--spend); } .b-ask-for-routing { background: var(--route); } .b-forward-note { background: var(--forward); }
+  .b-cold { background: var(--cold); } .b-skip { background: var(--skip); }
+  .ask { margin: 8px 0; }
+  .reasons { color: var(--muted); font-size: 12.5px; }
+  .card .foot { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  a { color: var(--accent); }
+  .empty { background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; padding: 18px; color: var(--muted); }
+  .empty ol { margin: 8px 0 0 18px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  .num { font-family: var(--mono); }
+  #drawer { position: fixed; top: 0; right: 0; height: 100vh; width: min(560px, 100vw); background: var(--panel); border-left: 1px solid var(--line); transform: translateX(100%); transition: transform .18s ease; overflow-y: auto; padding: 20px 22px 40px; z-index: 5; }
+  #drawer.on { transform: none; }
+  #drawer h2 { margin: 0 0 4px; font-size: 16px; }
+  #drawer .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  #drawer .grid label.wide { grid-column: 1 / -1; }
+  #drawer textarea { width: 100%; min-height: 220px; font-family: var(--sans); }
+  #note { font-size: 12.5px; color: var(--muted); margin: 6px 0 10px; }
+  #note.warn { color: var(--skip); }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; padding: 26px; text-align: center; color: var(--muted); margin-top: 14px; }
+  .drop.over { border-color: var(--accent); }
+  .due { background: var(--panel); border-left: 3px solid var(--forward); padding: 10px 14px; margin-bottom: 14px; border-radius: 6px; }
+  .small { font-size: 12.5px; color: var(--muted); }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Warm Path</h1>
+  <span class="meta" id="status">loading…</span>
+</header>
+<nav>
+  <button data-tab="target" class="on">Target</button>
+  <button data-tab="people">People</button>
+  <button data-tab="discover">Discover</button>
+  <button data-tab="outcomes">Outcomes</button>
+  <button data-tab="setup">Setup</button>
+</nav>
+<main>
+
+<section id="target" class="on">
+  <form class="row" id="f-target">
+    <label>Company <input name="company" placeholder="Corvid AI" required></label>
+    <label>Function <select name="function"><option value="">any</option><option>product</option><option>cs</option><option>gtm</option><option>eng</option><option>ops</option><option>design</option></select></label>
+    <label>Aliases (comma) <input name="alias" placeholder="old name, parent"></label>
+    <label>Orbit companies (comma) <input name="orbit" placeholder="investor, competitor"></label>
+    <button class="go">Find paths</button>
+  </form>
+  <div id="target-out"></div>
+</section>
+
+<section id="people">
+  <form class="row" id="f-people">
+    <label>Tier <select name="tier"><option value="">all</option><option>strong</option><option>warm</option><option>weak</option><option>cold-unanswered</option><option>cold-untested</option></select></label>
+    <label>Company contains <input name="company"></label>
+    <label>Show <input name="top" type="number" value="50" style="min-width:80px"></label>
+    <button class="go">List</button>
+  </form>
+  <div id="people-out"></div>
+</section>
+
+<section id="discover">
+  <p class="small">Recruiters, likely hiring managers, and in-function peers from Exa's people index. Public profile URLs; you open them. Needs <code>pip install exa-py</code> and <code>EXA_API_KEY</code> in <code>.env</code>.</p>
+  <form class="row" id="f-discover">
+    <label>Company <input name="company" required></label>
+    <label>Function <select name="function"><option value="">any</option><option>product</option><option>cs</option><option>gtm</option><option>eng</option><option>ops</option><option>design</option></select></label>
+    <label>About (disambiguate) <input name="about" placeholder="synthetic-user AI startup, SF" style="min-width:260px"></label>
+    <label>Aliases (comma) <input name="alias"></label>
+    <button class="go">Discover</button>
+  </form>
+  <div id="discover-out"></div>
+</section>
+
+<section id="outcomes">
+  <div id="due-out"></div>
+  <form class="row" id="f-log">
+    <label>Person <input name="person" required></label>
+    <label>Company <input name="company" required></label>
+    <label>Shape <select name="shape"><option value="">·</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>other</option></select></label>
+    <label>Channel <select name="channel"><option value="">·</option><option>linkedin</option><option>email</option><option>video</option><option>other</option></select></label>
+    <label>Sent (YYYY-MM-DD) <input name="sent" style="min-width:130px"></label>
+    <label>Status <select name="status" id="log-status"><option value="">·</option></select></label>
+    <label>Note <input name="note" style="min-width:240px"></label>
+    <button class="go">Log</button>
+  </form>
+  <div id="outcomes-out"></div>
+</section>
+
+<section id="setup">
+  <p>Ingest the official LinkedIn export. Settings &amp; Privacy → Data privacy → Get a copy of your data → <b>full archive</b> (you want <code>messages.csv</code> and <code>Positions.csv</code>). Message content is read for counts and dates only and never stored. Everything stays in the local SQLite file shown in the header.</p>
+  <form class="row" id="f-ingest">
+    <label>Path to export ZIP or folder <input name="path" placeholder="~/Downloads/Basic_LinkedInDataExport.zip" style="min-width:380px"></label>
+    <label>Your name (if Profile.csv is missing) <input name="me" placeholder="First Last"></label>
+    <button class="go">Ingest</button>
+  </form>
+  <div class="drop" id="drop">or drop the ZIP here (it is copied to <code>data/upload.zip</code>, gitignored)</div>
+  <p class="small" id="ingest-out"></p>
+  <p class="small">Try it without your data: <code>python -m warmpath demo</code> then <code>python -m warmpath serve --db data/demo.db</code>.</p>
+</section>
+</main>
+
+<div id="drawer">
+  <div class="btns" style="justify-content: space-between">
+    <h2 id="d-title">Draft</h2>
+    <button class="ghost" onclick="closeDrawer()">close</button>
+  </div>
+  <div class="small" id="d-header"></div>
+  <div class="grid">
+    <label>Role applied for <input id="d-role"></label>
+    <label>Channel <select id="d-channel"><option>linkedin</option><option>email</option></select></label>
+    <label class="wide">Hook: one specific reason you connected, or a question you have <input id="d-hook"></label>
+    <label>Shape <select id="d-shape"><option value="auto">auto (from verdict)</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>blurb</option></select></label>
+    <label>Follow-up <select id="d-followup"><option value="0">first touch</option><option value="1">1: day 5 bump</option><option value="2">2: day 12 close</option></select></label>
+    <label>Their title (if not in your network) <input id="d-title-in"></label>
+    <label>One line on you (for the blurb) <input id="d-me-line" placeholder="a CS-turned-product lead who fixes activation"></label>
+    <label class="wide">Your link (for the blurb) <input id="d-url" placeholder="https://linkedin.com/in/you"></label>
+    <label class="wide" id="d-findings-wrap" style="display:none">Findings, one line each (feedback shape)
+      <input id="d-f1" placeholder="1."><input id="d-f2" placeholder="2." style="margin-top:4px"><input id="d-f3" placeholder="3." style="margin-top:4px"></label>
+  </div>
+  <div class="btns">
+    <button class="go" onclick="doDraft(false,false)">Draft</button>
+    <button class="ghost" onclick="doDraft(false,true)">Prompt for any chat model</button>
+    <button class="ghost" id="d-llm-btn" onclick="doDraft(true,false)">Finish with Claude</button>
+  </div>
+  <div id="note"></div>
+  <textarea id="d-out" placeholder="Your draft appears here. Edit freely; you send it, the tool never does."></textarea>
+  <div class="btns" style="margin-top:8px">
+    <button class="ghost" onclick="copyOut()">Copy</button>
+    <button class="ghost" onclick="logSent()">Log as sent today</button>
+    <span class="small" id="d-logged"></span>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let STATUS = {};
+let D = { person: '', target: '', function: '', aliases: [] };
+
+async function api(path, opts) { const r = await fetch(path, opts); return r.json(); }
+function tab(name) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('on', s.id === name));
+  if (name === 'outcomes') loadOutcomes();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => tab(b.dataset.tab));
+
+async function loadStatus() {
+  STATUS = await api('/api/status');
+  const t = Object.entries(STATUS.tiers || {}).sort().map(([k, v]) => `<span class="chip">${k} ${v}</span>`).join('');
+  $('#status').innerHTML = STATUS.ready
+    ? `${esc(STATUS.me)} · ${STATUS.total} connections · <code>${esc(STATUS.db)}</code> · ${t} <span class="chip">${STATUS.exa ? 'Exa on' : 'Exa off'}</span><span class="chip">${STATUS.llm ? 'Claude on' : 'Claude off'}</span>`
+    : `No database yet at <code>${esc(STATUS.db)}</code>. Go to Setup.`;
+  if (!STATUS.ready) tab('setup');
+  $('#d-llm-btn').style.display = STATUS.llm ? '' : 'none';
+}
+
+const split = s => (s || '').split(',').map(x => x.trim()).filter(Boolean);
+const q = o => Object.entries(o).flatMap(([k, v]) => Array.isArray(v) ? v.map(x => [k, x]) : [[k, v]]).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+
+function personCard(m, company) {
+  const p = m.person;
+  return `<div class="card">
+    <span class="badge b-${m.verdict}">${m.verdict}</span>
+    <h3>${esc(p.name)}</h3>
+    <div class="sub">${esc(p.position)} · ${esc(p.company)}</div>
+    <div class="ask">${esc(m.ask)}</div>
+    <div class="reasons">mutual <b class="num">${p.strength}</b> (${esc(p.tier)}${p.reasons.length ? '; ' + esc(p.reasons.join('; ')) : ''})<br>target: ${esc(m.role_class)} (${esc(m.role_reason)}) · weak side: ${esc(m.weak_side)}</div>
+    <div class="foot">
+      <button class="ghost" onclick='openDrawer(${JSON.stringify({person: p.name, target: company, header: m.verdict.toUpperCase() + ": " + m.ask})})'>Draft</button>
+      ${p.url ? `<a href="${esc(p.url)}" target="_blank" rel="noopener">profile ↗</a>` : ''}
+    </div></div>`;
+}
+
+$('#f-target').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const company = f.get('company').trim(), fn = f.get('function');
+  D.target = company; D.function = fn; D.aliases = split(f.get('alias'));
+  $('#target-out').innerHTML = '<p class="small">working…</p>';
+  const r = await api('/api/target?' + q({ company, function: fn, alias: D.aliases, orbit: split(f.get('orbit')) }));
+  if (r.error) { $('#target-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
+  let h = '';
+  if (!r.matches.length) {
+    h += `<div class="empty"><b>No 1st-degree connections at ${esc(company)}${r.aliases.length ? ' / ' + esc(r.aliases.join(', ')) : ''}.</b> This is the empty state. Next moves:
+      <ol><li>Check aliases: recent rename, acquired startup, parent entity. Add them above.</li>
+      <li>Find recruiters and the hiring manager from outside LinkedIn: <a href="#" onclick="tab('discover');$('#f-discover [name=company]').value=${JSON.stringify(company)};return false">Discover ${esc(company)}</a>.</li>
+      <li>Second degree: which of your strong relationships know someone there? Add orbit companies above.</li></ol></div>`;
+  } else {
+    h += `<p class="small">${r.matches.length} connection(s) at ${esc(company)}${fn ? ' · function ' + fn : ''}. Verdicts name the weak side of each pair.</p><div class="cards">`;
+    h += r.matches.map(m => personCard(m, company)).join('') + '</div>';
+  }
+  if (r.orbit.length) {
+    h += `<h3 style="margin-top:22px;font-size:14px">Adjacent orbit: strong and warm relationships at related companies, for second-degree asks</h3><table><tr><th>score</th><th>name</th><th>company</th><th>title</th></tr>` +
+      r.orbit.map(o => `<tr><td class="num">${o.person.strength}</td><td>${esc(o.person.name)}</td><td>${esc(o.company)}</td><td>${esc(o.person.position)}</td></tr>`).join('') + '</table>';
+  }
+  $('#target-out').innerHTML = h;
+};
+
+$('#f-people').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const r = await api('/api/people?' + q({ tier: f.get('tier'), company: f.get('company'), top: f.get('top') }));
+  if (r.error) { $('#people-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
+  $('#people-out').innerHTML = `<table><tr><th>score</th><th>tier</th><th>name</th><th>company</th><th>title</th><th>why</th></tr>` +
+    r.people.map(p => `<tr><td class="num">${p.strength}</td><td>${esc(p.tier)}</td><td>${esc(p.name)}</td><td>${esc(p.company)}</td><td>${esc(p.position)}</td><td class="small">${esc(p.reasons.join('; '))}</td></tr>`).join('') + '</table>';
+};
+
+function discCard(d, company) {
+  return `<div class="card">
+    <h3>${esc(d.name)} ${d.at_target ? '' : '<span class="small">?</span>'}</h3>
+    <div class="sub">${esc(d.title)}${d.company ? ' · ' + esc(d.company) : ''}${d.location ? ' · ' + esc(d.location) : ''}</div>
+    <div class="reasons">${esc(d.role_class)} (${esc(d.role_reason)})${d.at_target ? '' : ' · current company in the index does not match; verify first'}</div>
+    <div class="foot">
+      <button class="ghost" onclick='openDrawer(${JSON.stringify({person: d.name, target: company, title: d.title, header: "COLD (not in your network): " + d.role_class})})'>Draft</button>
+      ${d.url ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">profile ↗</a>` : ''}
+    </div></div>`;
+}
+$('#f-discover').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const company = f.get('company').trim();
+  $('#discover-out').innerHTML = '<p class="small">searching…</p>';
+  const r = await api('/api/discover?' + q({ company, function: f.get('function'), about: f.get('about'), alias: split(f.get('alias')) }));
+  if (r.error) { $('#discover-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
+  if (r.note) { $('#discover-out').innerHTML = `<div class="empty">${esc(r.note)}</div>`; return; }
+  let h = '';
+  for (const [k, label] of [['recruiters', 'Recruiters and TA (route to process)'], ['leaders', 'Likely hiring managers (champions)'], ['peers', 'In-function peers'], ['roster', 'Everyone else the index has at the company']]) {
+    if (!r[k].length) continue;
+    h += `<h3 style="font-size:14px;margin:18px 0 8px">${label}</h3><div class="cards">` + r[k].map(d => discCard(d, company)).join('') + '</div>';
+  }
+  $('#discover-out').innerHTML = h || '<div class="empty">Nothing confirmed at that company. Try --about style disambiguation or an alias.</div>';
+};
+
+async function loadOutcomes() {
+  const r = await api('/api/outcomes');
+  const sel = $('#log-status'); if (sel.options.length <= 1) (r.statuses || []).forEach(s => sel.add(new Option(s, s)));
+  $('#due-out').innerHTML = r.due.length ? r.due.map(d => `<div class="due"><b>${esc(d.person)}</b> @ ${esc(d.company)}: day ${d.days}, ${esc(d.what)} <button class="ghost" style="margin-left:8px" onclick='openDrawer(${JSON.stringify({person: d.person, target: d.company, followup: d.what.startsWith('close') ? 2 : 1})})'>draft it</button></div>`).join('') : '';
+  $('#outcomes-out').innerHTML = r.rows.length ? `<table><tr><th>sent</th><th>status</th><th>person</th><th>company</th><th>shape</th><th>channel</th><th>note</th></tr>` +
+    r.rows.map(o => `<tr><td class="num">${esc(o.sent_on)}</td><td>${esc(o.status)}</td><td>${esc(o.person)}</td><td>${esc(o.company)}</td><td>${esc(o.shape)}</td><td>${esc(o.channel)}</td><td class="small">${esc(o.note)}</td></tr>`).join('') + '</table>'
+    : '<div class="empty">Nothing logged yet. Log what you send, then what came back. This is the honest record and, later, what the scorer learns from.</div>';
+}
+$('#f-log').onsubmit = async e => {
+  e.preventDefault();
+  const b = Object.fromEntries(new FormData(e.target));
+  const r = await api('/api/log', { method: 'POST', body: JSON.stringify(b) });
+  if (r.error) alert(r.error); else { e.target.reset(); loadOutcomes(); }
+};
+
+$('#f-ingest').onsubmit = async e => {
+  e.preventDefault();
+  const b = Object.fromEntries(new FormData(e.target));
+  $('#ingest-out').textContent = 'ingesting…';
+  const r = await api('/api/ingest', { method: 'POST', body: JSON.stringify(b) });
+  $('#ingest-out').textContent = r.error ? r.error : 'Ingested: ' + JSON.stringify(r.stats);
+  if (!r.error) { await loadStatus(); tab('target'); }
+};
+const drop = $('#drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = async e => {
+  e.preventDefault(); drop.classList.remove('over');
+  const file = e.dataTransfer.files[0]; if (!file) return;
+  $('#ingest-out').textContent = `uploading ${file.name}…`;
+  const r = await api('/api/ingest-upload', { method: 'POST', body: file, headers: { 'X-Me': $('#f-ingest [name=me]').value } });
+  $('#ingest-out').textContent = r.error ? r.error : 'Ingested: ' + JSON.stringify(r.stats);
+  if (!r.error) { await loadStatus(); tab('target'); }
+};
+
+function openDrawer(o) {
+  D.person = o.person; D.target = o.target || D.target;
+  $('#d-title').textContent = `Draft to ${o.person}`;
+  $('#d-header').textContent = (o.header || '') + (o.target ? ` · ${o.target}` : '');
+  $('#d-title-in').value = o.title || '';
+  $('#d-followup').value = o.followup || 0;
+  $('#d-out').value = ''; $('#note').textContent = ''; $('#d-logged').textContent = '';
+  $('#drawer').classList.add('on');
+}
+function closeDrawer() { $('#drawer').classList.remove('on'); }
+$('#d-shape').onchange = () => { $('#d-findings-wrap').style.display = $('#d-shape').value === 'feedback' ? '' : 'none'; };
+async function doDraft(llm, prompt) {
+  const b = { person: D.person, target: D.target, function: D.function, aliases: D.aliases,
+    role: $('#d-role').value, hook: $('#d-hook').value, channel: $('#d-channel').value, shape: $('#d-shape').value,
+    followup: $('#d-followup').value, title: $('#d-title-in').value, me_line: $('#d-me-line').value, url: $('#d-url').value,
+    findings: [$('#d-f1').value, $('#d-f2').value, $('#d-f3').value], llm, prompt };
+  $('#note').textContent = llm ? 'asking Claude…' : '';
+  const r = await api('/api/draft', { method: 'POST', body: JSON.stringify(b) });
+  if (r.error) { $('#note').textContent = r.error; return; }
+  $('#d-header').textContent = r.header + ` · shape ${r.shape}`;
+  $('#d-out').value = r.text;
+  $('#note').textContent = r.note + (prompt ? '' : '  Send Mon to Thu if you can.');
+  $('#note').classList.toggle('warn', /Over \d+/.test(r.note));
+}
+async function copyOut() { await navigator.clipboard.writeText($('#d-out').value); $('#d-logged').textContent = 'copied'; }
+async function logSent() {
+  const shape = $('#d-shape').value === 'auto' ? ($('#d-header').textContent.split(':')[0] || 'other').toLowerCase().replace(/ .*/, '') : $('#d-shape').value;
+  const r = await api('/api/log', { method: 'POST', body: JSON.stringify({ person: D.person, company: D.target, shape, channel: $('#d-channel').value, note: $('#d-hook').value }) });
+  $('#d-logged').textContent = r.error || r.message;
+}
+loadStatus();
+</script>
+</body>
+</html>

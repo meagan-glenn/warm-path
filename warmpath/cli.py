@@ -6,6 +6,7 @@
   python -m warmpath draft "Ryan Boyd" --target Simile --role "Deployment Strategist" [--hook "..."] [--llm]
   python -m warmpath discover "Ode with Anthropic" --function cs
   python -m warmpath demo            synthetic export + data/demo.db, no real data needed
+  python -m warmpath serve [--db data/demo.db] [--port 8765]   local web UI, 127.0.0.1 only
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
 from .score import score_all
+from .serve import serve
 from .targets import build_report
 
 DEFAULT_DB = Path("data/warmpath.db")
@@ -53,6 +55,10 @@ def cmd_demo(a):
               f'python -m warmpath --db {db} target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian',
               f'python -m warmpath --db {db} draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"'):
         print("  " + c)
+
+
+def cmd_serve(a):
+    serve(a.db, port=a.port, open_browser=not a.no_browser)
 
 
 def cmd_people(a):
@@ -184,6 +190,7 @@ def main(argv=None):
 
     s = sub.add_parser("ingest"); s.add_argument("export"); s.add_argument("--me"); s.set_defaults(fn=cmd_ingest)
     s = sub.add_parser("demo"); s.add_argument("--out", default="demo/export"); s.set_defaults(fn=cmd_demo)
+    s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8765); s.add_argument("--no-browser", action="store_true"); s.set_defaults(fn=cmd_serve)
     s = sub.add_parser("people"); s.add_argument("--top", type=int, default=30); s.add_argument("--tier"); s.add_argument("--company"); s.set_defaults(fn=cmd_people)
     s = sub.add_parser("target"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
     s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"]); s.add_argument("--orbit", action="append", default=[])

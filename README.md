@@ -31,7 +31,8 @@ A fourth case, a peer at a startup the author had just applied to and did not kn
 - `target "Company" --function cs`: everyone you know at the target, each pair scored on both sides. Mutual strength (will they help?) from the export; target strength (can they champion?) from their title. Verdicts: `spend`, `ask-for-routing`, `forward-note`, `cold`, `skip`, with the weak side named. `--alias` for renames and parents, `--orbit` for adjacent companies to seed second-degree asks.
 - `draft "Name" --target X`: a message scaffold keyed to the verdict, with a character count against LinkedIn's response-rate bands. `--shape` overrides (including `feedback` for products you have used and `blurb` for the forwardable two-liner a mutual pastes), `--followup 1|2` for the day-5 bump and day-12 close, `--prompt` prints a paste-ready prompt for any chat model, `--llm` finishes it with Claude. Works for people who are not in your network too (`--title`).
 - `discover "Company" --function cs`: recruiters, likely hiring managers, and in-function peers at the target from Exa's people index. Public profile URLs. This is the empty state's answer.
-- `log` and `outcomes`: what you sent, in what shape, and what came back. The honest record, and the data the scorer will eventually learn from.
+- `log` and `outcomes`: what you sent, in what shape, and what came back, plus which threads are due a follow-up. The honest record, and the data the scorer will eventually learn from.
+- `serve`: all of the above in a local web page for people who would rather not use a terminal.
 
 ## What it deliberately does not do
 
@@ -56,6 +57,14 @@ python3 -m warmpath --db data/demo.db target Tessellate --function cs           
 python3 -m warmpath --db data/demo.db target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian
 python3 -m warmpath --db data/demo.db draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"
 ```
+
+Prefer a screen to a terminal? Same code, same local database:
+
+```bash
+python3 -m warmpath --db data/demo.db serve
+```
+
+That opens `http://127.0.0.1:8765` with Target, People, Discover, Outcomes, and Setup tabs and a draft drawer with a copy button. Standard library only, bound to localhost; the browser talks to your machine and nothing else.
 
 Tests: `python3 -m unittest discover tests`.
 
@@ -103,7 +112,9 @@ LinkedIn export (zip)                    Exa people index (optional)
         |
     drafts.py   verdict-keyed scaffolds, optional Claude
         |
-   outcomes.py  what was sent, what happened
+   outcomes.py  what was sent, what happened, what is due
+        |
+     serve.py   local web UI over the same functions (127.0.0.1)
 ```
 
 Everything is stdlib Python and one SQLite file. Nothing leaves the machine unless you turn on an extra, and even then only a company name and a role go to Exa, and only a draft prompt (no message history) goes to Anthropic.

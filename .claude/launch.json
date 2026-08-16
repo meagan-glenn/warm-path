@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "warmpath-demo", "runtimeExecutable": "python3", "runtimeArgs": ["-m", "warmpath", "serve", "--db", "data/demo.db", "--no-browser", "--port", "8765"], "port": 8765 }
+  ]
+}
