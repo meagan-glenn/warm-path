@@ -44,6 +44,7 @@ specific person at a company they applied to. Rules, each backed by outreach res
 - Under 400 characters if you can, never over 800. Shorter messages get more replies.
 - Open with one specific reason for the connection, drawn only from the context given.
 - Ask for the person's read or advice, not a favor. Advice requests land better than help requests.
+- Match the ask to their seat. Recruiter or TA: a one-line state check (still open? anything missing?), never a meeting. Hiring manager or senior in function: their read on fit, answerable in a line. Peer: a real question about their work, then 15 minutes as an option. Wrong function: routing only.
 - Make one plain ask. Do not stack hedges; one graceful out is enough.
 - Mention the application in a single transparent clause and say plainly it is not the ask.
 - Plain, warm, direct. No flattery, no "I hope this finds you well", no "love what you're building".
@@ -67,6 +68,7 @@ class DraftInput:
     me_line: str = ""             # one line on who the sender is, for the blurb
     findings: list[str] = field(default_factory=list)   # for the feedback shape
     profile_url: str = ""         # sender's link, for the blurb
+    role_class: str = "other"     # route (recruiter/TA) / champion (senior) / peer / other; drives the cold ask
 
 
 def _first(name: str) -> str:
@@ -87,7 +89,7 @@ def blurb(d: DraftInput) -> str:
 
 def scaffold(d: DraftInput) -> str:
     first = _first(d.person_name)
-    hook = d.hook or f"[one specific reason you connected with {first}, or why {d.company}]"
+    hook = d.hook or f"[finish this sentence: I am writing because ... (one specific thing about {first} or {d.company})]"
     role = d.role or "[role]"
     q = f"[one real question about their work at {d.company}]"
     v = d.verdict
@@ -114,7 +116,31 @@ def scaffold(d: DraftInput) -> str:
             f"\n\n(If they say yes, send the blurb: `warmpath draft \"{d.person_name}\" --target \"{d.company}\" --shape blurb`)"
         )
     if v == "cold":
-        return (
+        if d.role_class == "route":
+            # Recruiter or TA. They own the process, not the opinion. Do not ask for their time; ask for a state check.
+            who = f" {d.me_line}." if d.me_line else ""
+            link = f" {d.profile_url}" if d.profile_url else ""
+            return (
+                f"Hi {first}, I applied for the {role} role at {d.company}{(' ' + d.hook) if d.hook else ''}.{who} "
+                f"Two questions, either is fine to answer in a line: is the role still open, and is there anything you would want "
+                f"from me beyond the application? Happy to send it.{link}"
+            )
+        if d.role_class == "champion":
+            # Likely hiring manager or senior in function. Ask for their read on fit, not for a meeting.
+            return (
+                f"Hey {first}, {hook}\n\n"
+                f"{q}\n\n"
+                f"Full disclosure, I applied for the {role} role and I think it sits near your team. Not asking you to carry it. "
+                f"One question you can answer in a line: is that the kind of profile you are actually hiring for? If yes I will keep going through the front door; if no, I would rather know."
+            )
+        if d.role_class == "other":
+            # Wrong function. The only useful ask is routing.
+            return (
+                f"Hey {first}, {hook}\n\n"
+                f"Quick one: I applied for the {role} role at {d.company}. Do you happen to know who owns that team? "
+                f"Not asking for anything beyond a name; I want it to land with the right person."
+            )
+        return (  # peer
             f"Hey {first}, {hook}\n\n"
             f"{q}\n\n"
             f"Full disclosure, I applied for the {role} role. Not asking you to do anything with that. "
@@ -174,7 +200,7 @@ def _context(d: DraftInput) -> str:
         f"Recipient: {d.person_name}, {d.person_title} at {d.company}",
         f"Channel: {d.channel}",
         f"Relationship: {d.relationship}",
-        f"Verdict: {d.verdict}. Ask shape: {d.ask_shape}",
+        f"Verdict: {d.verdict}. Their seat: {d.role_class}. Ask shape: {d.ask_shape}",
         f"Role applied for: {d.role or 'unspecified'}",
         f"Sender-supplied hook or context: {d.hook or 'none, keep it general and honest'}",
         *( [f"Findings to include, one line each: " + " | ".join(d.findings)] if d.findings else [] ),
@@ -213,7 +239,7 @@ def llm_draft(d: DraftInput) -> str | None:
 def input_for(tp: TargetPerson, role: str, hook: str, channel: str, **kw) -> DraftInput:
     p = tp.person
     rel = f"{p.tier}, score {p.strength:.0f}; " + ("; ".join(p.reasons) or "no history")
-    return DraftInput(p.name, p.position, p.company, role, rel, tp.verdict, tp.ask, hook, channel, **kw)
+    return DraftInput(p.name, p.position, p.company, role, rel, tp.verdict, tp.ask, hook, channel, role_class=tp.role_class, **kw)
 
 
 def render(d: DraftInput, use_llm: bool = False, followup_n: int = 0) -> str:

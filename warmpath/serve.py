@@ -23,7 +23,7 @@ from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
 from .score import score_all
-from .targets import build_report
+from .targets import build_report, classify_role
 
 UI = Path(__file__).with_name("ui.html")
 FUNCTIONS = ["product", "cs", "gtm", "eng", "ops", "design"]
@@ -157,9 +157,10 @@ class App:
                 d = input_for(m[0], role, hook, channel, **extra)
                 header = f"{m[0].verdict.upper()}: {m[0].ask}"
         if d is None:
+            rc, rr, _ = classify_role(b.get("title", ""), b.get("function") or None)
             d = DraftInput(person or "there", b.get("title", ""), target, role, "not a connection; no history", "cold",
-                           "Cold outreach to someone you do not know.", hook, channel, **extra)
-            header = "COLD (not in your network)"
+                           f"Cold outreach; seat: {rc} ({rr}).", hook, channel, role_class=rc, **extra)
+            header = f"COLD (not in your network) · seat: {rc}"
         if b.get("shape") and b["shape"] != "auto":
             d.verdict = b["shape"]
         if b.get("prompt"):

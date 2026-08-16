@@ -62,6 +62,19 @@ Sources: [The Double Opt-In Introduction](https://avc.com/2009/11/the-double-opt
 
 Widely reported industry figures put referrals at roughly 30 to 40 percent of hires at larger companies while being a small fraction of applicants, and referred candidates are hired at several times the rate of job-board applicants. These come from vendor and survey aggregates (Jobvite, SHRM, referral-software vendors) rather than a single controlled study, so they are quoted here as an order of magnitude, not a precise number. The direction is not in dispute.
 
+## 8. Match the ask to the seat
+
+The relationship verdict says how much you can ask for. The person's seat says what to ask for. A cold message to a recruiter, a hiring manager, and a peer are three different messages:
+
+| Seat | What they can do | The ask | What not to do |
+|---|---|---|---|
+| Recruiter / TA (`route`) | Own the process, not the opinion | One-line state check: is the role still open, is anything missing from my application; one line on you; your link | Ask for 15 minutes. Their calendar is the scarcest thing they have and a call is not how they route you. |
+| Hiring manager / senior in function (`champion`) | Form an opinion on fit | Their read, answerable in a line: "is this the profile you are actually hiring for?" plus one real question about their work | Ask them to carry your application. Let them offer. |
+| Peer (`peer`) | Tell you what it is like inside; sometimes refer | A real question about their work, then 15 minutes as an option | Pitch yourself. They are not evaluating you. |
+| Other function (`other`) | Point you to a name | Routing only: who owns this team? | Anything more than a name. |
+
+Evidence: the advice-seeking effect (section 2) is about people who *can* form a view, so it applies to champions and peers, not to process owners. LinkedIn's InMail data (section 1) rewards specificity and brevity, and the recruiter shape is the most specific and shortest of the four. The rest is judgment from having sent the wrong ask to the wrong seat.
+
 ## What is judgment, not evidence
 
 - **The disclosure clause.** "Full disclosure, I applied. Not asking you to do anything with that." No study tests this. It comes from the author's own experience that the alternative, a friendly message with a hidden agenda, reads as exactly that when the ask arrives later. Transparency here is a bet on trust over cleverness. Outcomes are logged so this can be checked over time.

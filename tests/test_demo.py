@@ -96,3 +96,17 @@ class Drafts(unittest.TestCase):
                 ("C", "X", "cold", "linkedin", "2026-08-01", "replied", "", "")]
         d = due(rows, today=date(2026, 8, 15))
         self.assertEqual([(p, w.split(" (")[0]) for p, _, _, w in d], [("A", "close the loop"), ("B", "one bump")])
+
+
+class SeatAwareCold(unittest.TestCase):
+    def test_cold_varies_by_seat(self):
+        from warmpath.drafts import DraftInput, scaffold
+        outs = {}
+        for rc in ("route", "champion", "peer", "other"):
+            d = DraftInput("Angela L.", "Recruiting", "Wispr Flow", "Product Lead", "none", "cold", "x", "on Tuesday", role_class=rc, me_line="a PM", profile_url="https://x")
+            outs[rc] = scaffold(d)
+        self.assertEqual(len(set(outs.values())), 4)
+        self.assertNotIn("15 minutes", outs["route"])
+        self.assertIn("still open", outs["route"])
+        self.assertIn("15 minutes", outs["peer"])
+        self.assertIn("who owns", outs["other"])

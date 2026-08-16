@@ -22,7 +22,7 @@ from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
 from .score import score_all
 from .serve import serve
-from .targets import build_report
+from .targets import build_report, classify_role
 
 DEFAULT_DB = Path("data/warmpath.db")
 
@@ -121,9 +121,10 @@ def cmd_draft(a):
         header = f"To: {t.person.name}  |  {t.person.position} at {t.person.company}\nVerdict: {t.verdict.upper()}  ({t.ask})"
     else:
         # Not in your network (a discover result, say). Cold by definition.
+        rc, rr, _ = classify_role(a.title or "", a.function)
         d = DraftInput(a.person, a.title or "", a.target, a.role or "", "not a connection; no history", "cold",
-                       "Cold outreach to someone you do not know. Reason, question, disclosure, small ask.", a.hook or "", a.channel, **extra)
-        header = f"To: {a.person}  |  {a.title or '(title unknown, pass --title)'} at {a.target}\nVerdict: COLD (not in your network)"
+                       f"Cold outreach to someone you do not know; seat: {rc} ({rr}).", a.hook or "", a.channel, role_class=rc, **extra)
+        header = f"To: {a.person}  |  {a.title or '(title unknown, pass --title)'} at {a.target}\nVerdict: COLD (not in your network), seat: {rc}"
     if a.shape and a.shape != "auto":
         d.verdict = a.shape
     if a.prompt:
