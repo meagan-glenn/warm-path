@@ -26,7 +26,7 @@ from .discover import _load_dotenv, discover
 from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
-from .outcomes import STATUSES, due, log, report
+from .outcomes import GENERATORS, STATUSES, due, evaluate, format_evaluation, log, report
 from .relay import relay
 from .score import FLAGS, mark, score_all
 from .serve import serve
@@ -216,6 +216,7 @@ def cmd_draft(a):
         d = DraftInput(a.person, a.title or "", a.target, a.role or "", "not a connection; no history", "cold",
                        f"Cold outreach to someone you do not know; seat: {rc} ({rr}).", a.hook or "", a.channel, role_class=rc, **extra)
         header = f"To: {a.person}  |  {a.title or '(title unknown, pass --title)'} at {a.target}\nVerdict: COLD (not in your network), seat: {rc}"
+    tool_verdict = d.verdict
     if a.shape and a.shape != "auto":
         d.verdict = a.shape
     if a.prompt:
@@ -228,6 +229,9 @@ def cmd_draft(a):
     print(out)
     print("-" * 60)
     print(length_note(out, a.channel) + "  Send Mon-Thu if you can; Fri and Sat underperform.")
+    gen = "claude-opus-5" if a.llm else "scaffold"
+    print(f"When sent, log it so the report can score this call:\n  python -m warmpath log \"{d.person_name}\" --company \"{a.target}\" --shape {d.verdict} --channel {a.channel} --generator {gen}"
+          + (f" --seat {d.role_class}" if getattr(d, "role_class", "") else "") + f" --verdict {tool_verdict}")
 
 
 def cmd_discover(a):
@@ -252,10 +256,13 @@ def cmd_discover(a):
 
 
 def cmd_log(a):
-    print(log(_conn(a.db), a.person, a.company, a.shape, a.channel, a.sent, a.status, a.note))
+    print(log(_conn(a.db), a.person, a.company, a.shape, a.channel, a.sent, a.status, a.note,
+              verdict=a.verdict, seat=a.seat, generator=a.generator))
 
 
 def cmd_outcomes(a):
+    if a.report:
+        print(format_evaluation(evaluate(_conn(a.db)))); return
     rows = report(_conn(a.db))
     if not rows:
         print("No outcomes logged yet. Use: python -m warmpath log \"Name\" --company X --shape cold --sent YYYY-MM-DD")
@@ -319,8 +326,12 @@ def main(argv=None):
     s = sub.add_parser("log"); s.add_argument("person"); s.add_argument("--company", required=True)
     s.add_argument("--shape", choices=["spend", "ask-for-routing", "forward-note", "cold", "feedback", "other"])
     s.add_argument("--channel", choices=["linkedin", "email", "video", "other"]); s.add_argument("--sent", help="YYYY-MM-DD")
-    s.add_argument("--status", choices=list(STATUSES)); s.add_argument("--note"); s.set_defaults(fn=cmd_log)
-    s = sub.add_parser("outcomes"); s.set_defaults(fn=cmd_outcomes)
+    s.add_argument("--status", choices=list(STATUSES)); s.add_argument("--note")
+    s.add_argument("--generator", choices=list(GENERATORS), help="how the words were made; draft prints the right value")
+    s.add_argument("--verdict", help="what the tool said about the pair (draft prints it)"); s.add_argument("--seat", choices=["route", "champion", "peer", "other"])
+    s.set_defaults(fn=cmd_log)
+    s = sub.add_parser("outcomes"); s.add_argument("--report", action="store_true", help="reply rates by shape, seat, verdict, generator, channel; intro-ask precision")
+    s.set_defaults(fn=cmd_outcomes)
 
     a = ap.parse_args(argv)
     a.fn(a)

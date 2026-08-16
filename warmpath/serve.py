@@ -23,7 +23,7 @@ from .discover import _exa, discover
 from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
-from .outcomes import STATUSES, due, log, report
+from .outcomes import STATUSES, due, evaluate, format_evaluation, log, report, rows_full
 from .relay import relay
 from .score import FLAGS, mark, score_all
 from .targets import build_report, classify_role
@@ -157,10 +157,16 @@ class App:
         if not c:
             return {"rows": [], "due": []}
         rows = report(c)
-        keys = ["person", "company", "shape", "channel", "sent_on", "status", "updated_on", "note"]
-        return {"rows": [dict(zip(keys, r)) for r in rows],
+        return {"rows": rows_full(c),
                 "due": [{"person": p, "company": co, "days": d, "what": w} for p, co, d, w in due(rows)],
                 "statuses": list(STATUSES)}
+
+    def eval_report(self) -> dict:
+        c = self.conn()
+        if not c:
+            return {"text": "", "data": None}
+        ev = evaluate(c)
+        return {"text": format_evaluation(ev), "data": ev}
 
     # ---- write endpoints
     def ingest(self, body: dict) -> dict:
@@ -218,13 +224,15 @@ class App:
             d = DraftInput(person or "there", b.get("title", ""), target, role, "not a connection; no history", "cold",
                            f"Cold outreach; seat: {rc} ({rr}).", hook, channel, role_class=rc, **extra)
             header = f"COLD (not in your network) · seat: {rc}"
+        tool_verdict = d.verdict
         if b.get("shape") and b["shape"] != "auto":
             d.verdict = b["shape"]
+        meta = {"seat": d.role_class, "verdict": tool_verdict}
         if b.get("prompt"):
-            return {"header": header, "shape": d.verdict, "text": prompt_for(d), "note": "paste into any chat model"}
+            return {"header": header, "shape": d.verdict, "text": prompt_for(d), "note": "paste into any chat model", **meta}
         fu = int(b.get("followup") or 0)
         text = render(d, bool(b.get("llm")), fu)
-        return {"header": header, "shape": d.verdict, "followup": fu, "text": text, "note": length_note(text, channel)}
+        return {"header": header, "shape": d.verdict, "followup": fu, "text": text, "note": length_note(text, channel), **meta}
 
     def log(self, b: dict) -> dict:
         c = self.conn()
@@ -233,7 +241,8 @@ class App:
         if not b.get("person") or not b.get("company"):
             return {"error": "person and company required"}
         msg = log(c, b["person"], b["company"], b.get("shape") or None, b.get("channel") or None,
-                  b.get("sent") or None, b.get("status") or None, b.get("note") or None)
+                  b.get("sent") or None, b.get("status") or None, b.get("note") or None,
+                  verdict=b.get("verdict") or None, seat=b.get("seat") or None, generator=b.get("generator") or None)
         return {"ok": True, "message": msg}
 
 
@@ -262,6 +271,7 @@ def make_handler(app: App):
                 if u.path == "/api/target": return self._json(app.target(q))
                 if u.path == "/api/discover": return self._json(app.discover(q))
                 if u.path == "/api/outcomes": return self._json(app.outcomes())
+                if u.path == "/api/report": return self._json(app.eval_report())
                 if u.path == "/api/bridge": return self._json(app.bridge(q))
                 if u.path == "/api/relay": return self._json(app.relay(q))
                 self._json({"error": "not found"}, 404)

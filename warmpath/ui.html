@@ -139,13 +139,16 @@
   <form class="row" id="f-log">
     <label>Person <input name="person" required></label>
     <label>Company <input name="company" required></label>
-    <label>Shape <select name="shape"><option value="">·</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>other</option></select></label>
+    <label>Shape <select name="shape"><option value="">·</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>ask-for-intro</option><option>ask-if-they-know</option><option>relay</option><option>other</option></select></label>
     <label>Channel <select name="channel"><option value="">·</option><option>linkedin</option><option>email</option><option>video</option><option>other</option></select></label>
+    <label>Seat <select name="seat"><option value="">·</option><option>route</option><option>champion</option><option>peer</option><option>other</option></select></label>
+    <label>Made by <select name="generator"><option value="">·</option><option>scaffold</option><option>claude-opus-5</option><option>prompt-paste</option><option>hand</option></select></label>
     <label>Sent (YYYY-MM-DD) <input name="sent" style="min-width:130px"></label>
     <label>Status <select name="status" id="log-status"><option value="">·</option></select></label>
     <label>Note <input name="note" style="min-width:240px"></label>
     <button class="go">Log</button>
   </form>
+  <details id="report-wrap" style="margin:12px 0"><summary class="small">Report: reply rate by shape, seat, verdict, generator, channel; intro-ask precision</summary><pre id="report-out" class="small"></pre></details>
   <div id="outcomes-out"></div>
 </section>
 
@@ -320,10 +323,11 @@ $('#f-discover').onsubmit = async e => {
 
 async function loadOutcomes() {
   const r = await api('/api/outcomes');
+  api('/api/report').then(x => { $('#report-out').textContent = x.text || ''; });
   const sel = $('#log-status'); if (sel.options.length <= 1) (r.statuses || []).forEach(s => sel.add(new Option(s, s)));
   $('#due-out').innerHTML = r.due.length ? r.due.map(d => `<div class="due"><b>${esc(d.person)}</b> @ ${esc(d.company)}: day ${d.days}, ${esc(d.what)} <button class="ghost" style="margin-left:8px" onclick='openDrawer(${JSON.stringify({person: d.person, target: d.company, followup: d.what.startsWith('close') ? 2 : 1})})'>draft it</button></div>`).join('') : '';
-  $('#outcomes-out').innerHTML = r.rows.length ? `<table><tr><th>sent</th><th>status</th><th>person</th><th>company</th><th>shape</th><th>channel</th><th>note</th></tr>` +
-    r.rows.map(o => `<tr><td class="num">${esc(o.sent_on)}</td><td>${esc(o.status)}</td><td>${esc(o.person)}</td><td>${esc(o.company)}</td><td>${esc(o.shape)}</td><td>${esc(o.channel)}</td><td class="small">${esc(o.note)}</td></tr>`).join('') + '</table>'
+  $('#outcomes-out').innerHTML = r.rows.length ? `<table><tr><th>sent</th><th>status</th><th>person</th><th>company</th><th>shape</th><th>seat</th><th>made by</th><th>channel</th><th>note</th></tr>` +
+    r.rows.map(o => `<tr><td class="num">${esc(o.sent_on)}</td><td>${esc(o.status)}</td><td>${esc(o.person)}</td><td>${esc(o.company)}</td><td>${esc(o.shape)}</td><td>${esc(o.seat||'')}</td><td>${esc(o.generator||'')}</td><td>${esc(o.channel)}</td><td class="small">${esc(o.note)}</td></tr>`).join('') + '</table>'
     : '<div class="empty">Nothing logged yet. Log what you send, then what came back. This is the honest record and, later, what the scorer learns from.</div>';
 }
 $('#f-log').onsubmit = async e => {
@@ -452,13 +456,15 @@ async function doDraft(llm, prompt) {
   if (r.error) { $('#note').textContent = r.error; return; }
   $('#d-header').textContent = r.header + ` · shape ${r.shape}`;
   $('#d-out').value = r.text;
+  D.generator = prompt ? 'prompt-paste' : (llm ? 'claude-opus-5' : 'scaffold');
+  D.seat = r.seat || ''; D.verdict = r.verdict || '';
   $('#note').textContent = r.note + (prompt ? '' : '  Send Mon to Thu if you can.');
   $('#note').classList.toggle('warn', /Over \d+/.test(r.note));
 }
 async function copyOut() { await navigator.clipboard.writeText($('#d-out').value); $('#d-logged').textContent = 'copied'; }
 async function logSent() {
   const shape = $('#d-shape').value === 'auto' ? ($('#d-header').textContent.split(':')[0] || 'other').toLowerCase().replace(/ .*/, '') : $('#d-shape').value;
-  const r = await api('/api/log', { method: 'POST', body: JSON.stringify({ person: D.person, company: D.target, shape, channel: $('#d-channel').value, note: $('#d-hook').value }) });
+  const r = await api('/api/log', { method: 'POST', body: JSON.stringify({ person: D.person, company: D.target, shape, channel: $('#d-channel').value, note: $('#d-hook').value, generator: D.generator || 'hand', seat: D.seat || '', verdict: D.verdict || '' }) });
   $('#d-logged').textContent = r.error || r.message;
 }
 loadStatus();

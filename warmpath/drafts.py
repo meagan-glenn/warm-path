@@ -283,10 +283,16 @@ def render(d: DraftInput, use_llm: bool = False, followup_n: int = 0) -> str:
     if followup_n:
         return followup(d, followup_n)
     if use_llm:
-        out = llm_draft(d)
+        try:
+            out = llm_draft(d)
+        except Exception as e:  # network, auth, outage: degrade to the scaffold, never to a stack trace
+            out = None
+            why = f"{type(e).__name__}: {e}"
+        else:
+            why = "install `anthropic` and set ANTHROPIC_API_KEY. Or use --prompt and paste into any chat."
         if out:
             return out
-        return "(LLM unavailable: install `anthropic` and set ANTHROPIC_API_KEY. Or use --prompt and paste into any chat.)\n\n" + scaffold(d)
+        return f"(LLM unavailable: {why})\n\n" + scaffold(d)
     return scaffold(d)
 
 

@@ -37,7 +37,7 @@ Case D is the one that made the second-degree layer earn its place. The mutual-c
 - `enrich` then `bridge "Elena Verna" --company Lovable`: the second-degree layer. There is no compliant feed for other people's connections, so the tool infers who of *your* people probably knows the target from overlapping employers and years (public work history from Exa, cached once for your top 150 strong/warm contacts). Each pair is judged on both sides, your relationship observed and their bridge inferred, and it says which is which. Verdicts: `ask-for-intro`, `ask-if-they-know`, `forward-note`, `long-shot`. If nothing overlaps it says so, and that is a real answer.
 - `relay --via "Eddie" --target "Wispr Flow"`: your contact is at a company adjacent to the target and the useful person is their coworker. Pulls both rosters from the index, finds coworkers who overlapped with someone at the target, ranks by how easy the hallway ask is (same function, shared tenure, same office), and drafts the ask to your contact with a pasteable blurb.
 - `mark "Name" close|vouch|barely|hub`: one-click overrides that beat every heuristic, persisted. `hub` means "ask this person about every target regardless of overlap"; they show up at the bottom of every `bridge` with a geography reminder.
-- `log` and `outcomes`: what you sent, in what shape, and what came back, plus which threads are due a follow-up. The honest record, and the data the scorer will eventually learn from.
+- `log` and `outcomes`: what you sent, in what shape, to which seat, made how (scaffold, Claude, pasted prompt, by hand), and what came back, plus which threads are due a follow-up. `outcomes --report` turns it into reply rates by shape, seat, verdict, generator and channel, and a precision number for the second-degree inference. Every draft prints the `log` line with those fields filled in, so scoring the tool's own calls costs one paste.
 - `serve`: all of the above in a local web page for people who would rather not use a terminal.
 
 ## What it deliberately does not do
@@ -106,6 +106,10 @@ The default for `cold` and `forward-note`, and the one that worked for a cold in
 
 The rules these follow (under 400 characters, ask for advice not favors, one plain ask, spend on moderately weak ties, follow up once) each trace to a named source: LinkedIn's InMail response data, Brooks/Gino/Schweitzer 2015, Flynn and Lake 2008, Rajkumar et al. in Science 2022, and the large follow-up corpora from sales email. What is evidence, what is judgment, and what we could not find is in [docs/messaging.md](docs/messaging.md).
 
+## Model and component choices, and how they are measured
+
+Four places make a judgment: the relationship scorer (hand-tuned heuristics, on purpose), the people index (Exa, chosen for dated work history and a compliant source), the second-degree inference (career overlap, not observed connections), and the draft generator (deterministic scaffold first; Claude Opus 5 optional; a paste-ready prompt for any model). Each is written up in [docs/decisions.md](docs/decisions.md): what it was chosen over, what it costs, how it can be wrong, and which number in `outcomes --report` would show that. The same page lists what is instrumented today and what is not, including the fact that the scorer does not yet learn from the log.
+
 ## Architecture
 
 ```
@@ -142,5 +146,5 @@ The full research behind these (what happened to the scraper vendors, why the au
 ## Roadmap and open questions
 
 - **Second degree, the observed half.** `bridge` infers who knows the target from career overlap, which catches the ex-colleague and misses the conference friend. Reading the actual mutual-connections list is the only way to get the rest, and every bulk way of doing that is a ToS problem. On the table, off by default: a bookmarklet that copies the names on the mutuals page you are already looking at, one click per page, no requests, disclosed as a gray zone. Not built.
-- **Learning from outcomes.** The log exists; the scorer does not read it yet.
+- **Learning from outcomes.** The log and the report exist; the scorer does not read them yet, and will not until there are enough settled threads for a weight change to be more than noise. See [docs/decisions.md](docs/decisions.md) section 3.
 - **Honest limit.** The tool cannot conjure paths that do not exist. For the hottest companies the answer is often "cold route only," and the best it can do is make the cold route a good one.

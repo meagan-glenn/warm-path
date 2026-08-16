@@ -144,3 +144,40 @@ class Bridge(unittest.TestCase):
         self.assertTrue(any("Amplitude" in x for x in r))
         none = Profile("C", "Z", "", "", [Job("Other", "x", "2010-01-01", "2012-01-01")])
         self.assertEqual(_score_pair(none, t)[0], 0)
+
+
+class Outcomes(unittest.TestCase):
+    def test_report_rates_and_precision(self):
+        import sqlite3
+        from datetime import date, timedelta
+        from warmpath.outcomes import evaluate, log
+        c = sqlite3.connect(":memory:")
+        old = (date.today() - timedelta(days=30)).isoformat()
+        log(c, "A", "X", "cold", "linkedin", old, None, None, seat="route", generator="scaffold")
+        log(c, "B", "X", "cold", "linkedin", old, None, None, seat="peer", generator="claude-opus-5")
+        log(c, "B", "X", None, None, None, "replied", None)                       # advances B
+        log(c, "C", "Y", "ask-for-intro", "linkedin", old, None, None, generator="scaffold")
+        log(c, "C", "Y", None, None, None, "not-close", None)                     # inferred mutual did not know them
+        log(c, "D", "Y", "ask-for-intro", "linkedin", old, None, None, generator="scaffold")
+        log(c, "D", "Y", None, None, None, "intro-made", None)
+        log(c, "E", "Z", "spend", "email", date.today().isoformat(), None, None)  # open, not settled
+        ev = evaluate(c)
+        self.assertEqual(ev["n"], 5)
+        self.assertEqual(ev["overall"]["settled"], 4)
+        self.assertEqual(ev["overall"]["open"], 1)
+        gen = {g["key"]: g for g in ev["by_generator"]}
+        self.assertEqual(gen["claude-opus-5"]["rate"], 1.0)
+        self.assertEqual(gen["scaffold"]["replied"], 1)   # D via intro-made
+        self.assertEqual(ev["intro_precision"]["precision"], 0.5)
+        seat = {g["key"]: g for g in ev["by_seat"]}
+        self.assertEqual(seat["route"]["rate"], 0.0)
+
+    def test_schema_upgrade_in_place(self):
+        import sqlite3
+        from warmpath.outcomes import ensure, rows_full
+        c = sqlite3.connect(":memory:")
+        c.execute("CREATE TABLE outcomes (id INTEGER PRIMARY KEY, person TEXT NOT NULL, company TEXT NOT NULL, shape TEXT, channel TEXT, sent_on TEXT, status TEXT DEFAULT 'sent', updated_on TEXT, note TEXT)")
+        c.execute("INSERT INTO outcomes (person, company, shape, sent_on) VALUES ('old','co','cold','2026-01-01')")
+        ensure(c)
+        r = rows_full(c)[0]
+        self.assertIsNone(r["generator"]); self.assertEqual(r["shape"], "cold")
