@@ -36,11 +36,11 @@ def log(conn: sqlite3.Connection, person: str, company: str, shape: str | None, 
     today = date.today().isoformat()
     row = conn.execute("SELECT id FROM outcomes WHERE lower(person)=lower(?) AND lower(company)=lower(?) ORDER BY id DESC LIMIT 1",
                        (person, company)).fetchone()
-    if row and status:  # update an existing thread
-        conn.execute("UPDATE outcomes SET status=?, updated_on=?, note=COALESCE(?, note) WHERE id=?",
+    if row and (status or note) and not sent_on:  # annotate or advance the existing thread
+        conn.execute("UPDATE outcomes SET status=COALESCE(?, status), updated_on=?, note=COALESCE(?, note) WHERE id=?",
                      (status, today, note, row[0]))
         conn.commit()
-        return f"updated {person} @ {company}: {status}"
+        return f"updated {person} @ {company}: {status or 'note added'}"
     conn.execute("INSERT INTO outcomes (person, company, shape, channel, sent_on, status, updated_on, note) VALUES (?,?,?,?,?,?,?,?)",
                  (person, company, shape or "other", channel or "linkedin", sent_on or today, status or "sent", today, note))
     conn.commit()
