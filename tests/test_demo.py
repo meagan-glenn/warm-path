@@ -110,3 +110,37 @@ class SeatAwareCold(unittest.TestCase):
         self.assertIn("still open", outs["route"])
         self.assertIn("15 minutes", outs["peer"])
         self.assertIn("who owns", outs["other"])
+
+
+class Bridge(unittest.TestCase):
+    def test_demo_bridge_offline(self):
+        import os
+        from warmpath.bridge import bridge
+        from warmpath.demo import seed_enrichment
+        # force offline: no EXA key
+        saved = os.environ.pop("EXA_API_KEY", None)
+        tmp = tempfile.TemporaryDirectory()
+        try:
+            root = Path(tmp.name)
+            build(root / "export"); ingest(root / "export", root / "demo.db")
+            seed_enrichment(root / "demo.db")
+            rep = bridge(sqlite3.connect(root / "demo.db"), "Nora Fitzgerald", "Corvid AI")
+            names = [x.person.name for x in rep.pairs]
+            self.assertIn("Hana Kowalski", names)
+            self.assertIn("Wesley Marchetti", names)
+            self.assertNotIn("Diego Adeyemi", names)   # no overlap
+            self.assertEqual({x.verdict for x in rep.pairs if x.person.name == "Hana Kowalski"}, {"ask-for-intro"})
+        finally:
+            tmp.cleanup()
+            if saved: os.environ["EXA_API_KEY"] = saved
+
+    def test_overlap_scoring(self):
+        from warmpath.bridge import _score_pair
+        from warmpath.enrich import Job, Profile
+        me = Profile("A", "X", "", "", [Job("Amplitude", "PM", "2018-01-01", "2021-01-01")])
+        t = Profile("B", "Y", "", "", [Job("Amplitude", "Growth", "2019-01-01", "2022-01-01")])
+        b, r = _score_pair(me, t)
+        self.assertGreaterEqual(b, 30)
+        self.assertTrue(any("Amplitude" in x for x in r))
+        none = Profile("C", "Z", "", "", [Job("Other", "x", "2010-01-01", "2012-01-01")])
+        self.assertEqual(_score_pair(none, t)[0], 0)

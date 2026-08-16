@@ -23,6 +23,8 @@ Shapes:
   cold             thin relationship, peer: reason, question, disclosure, small ask
   feedback         for products you have used: three findings, then the disclosure
   blurb            the forwardable two-liner, third person, for the mutual to paste
+  ask-for-intro    to a mutual who likely knows the target (from `bridge`): intro ask + blurb
+  ask-if-they-know to a mutual with thin overlap: check first, ask nothing yet
   followup 1 / 2   day 5-7 bump, day 12-14 close; nothing after
 
 `--llm` (anthropic installed, key set) polishes the scaffold. `--prompt` prints a
@@ -69,6 +71,8 @@ class DraftInput:
     findings: list[str] = field(default_factory=list)   # for the feedback shape
     profile_url: str = ""         # sender's link, for the blurb
     role_class: str = "other"     # route (recruiter/TA) / champion (senior) / peer / other; drives the cold ask
+    via: str = ""                 # for intro shapes: the target person this mutual can reach
+    via_reason: str = ""          # why we think they know the target ("both at Amplitude 2018-2021")
 
 
 def _first(name: str) -> str:
@@ -81,6 +85,9 @@ def blurb(d: DraftInput) -> str:
     who = d.me_line or "[one line: what you do and the result you are known for]"
     role = d.role or "[role]"
     link = d.profile_url or "[your LinkedIn or portfolio URL]"
+    if d.via:
+        return (f"{me} is {who}. They applied for the {role} role at {d.company} and asked if I would connect you two, "
+                f"since it looks like it sits near your team. Worth a look: {link}")
     return (
         f"{me} is {who}. They applied for the {role} role at {d.company} and asked me if I knew who runs that team; "
         f"I said I would pass it along. Worth a look: {link}"
@@ -154,6 +161,20 @@ def scaffold(d: DraftInput) -> str:
             f"Three things, one line each:\n\n{lines}\n\n"
             f"Full disclosure, I applied for the {role} role, and I would have sent this either way. "
             f"Happy to walk through any of it if useful."
+        )
+    if v == "ask-for-intro":
+        why = f" (you two overlapped at {d.via_reason.split('both at ')[-1].split(',')[0]}, if I have that right)" if "both at" in d.via_reason else ""
+        return (
+            f"Hey {first}, {hook}\n\n"
+            f"Do you know {d.via} well{why}? I applied for the {role} role at {d.company} and it sits near their team. "
+            f"If you would be comfortable making a two-line intro I would be grateful. If you do not know them well enough, just say so, genuinely fine.\n\n"
+            f"---\n{blurb(d)}\n---"
+        )
+    if v == "ask-if-they-know":
+        return (
+            f"Hey {first}, {hook}\n\n"
+            f"Quick one: do you happen to know {d.via} at {d.company}? I applied for the {role} role and it looks like their team. "
+            f"Not asking for anything yet, just trying to work out whether I have a warm way in or should go cold."
         )
     if v == "blurb":
         return blurb(d)

@@ -18,7 +18,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from .bridge import bridge
 from .discover import _exa, discover
+from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
@@ -57,7 +59,30 @@ class App:
             for p in score_all(c):
                 out["tiers"][p.tier] = out["tiers"].get(p.tier, 0) + 1
                 out["total"] += 1
+            out["enrich"] = coverage(c)
         return out
+
+    def bridge(self, q: dict) -> dict:
+        c = self.conn()
+        if not c:
+            return {"error": "no database yet"}
+        name, company = q.get("person", [""])[0].strip(), q.get("company", [""])[0].strip()
+        if not name or not company:
+            return {"error": "person and company required"}
+        rep = bridge(c, name, company, top=int(q.get("top", ["8"])[0]))
+        return {"target": name, "company": company, "note": rep.note, "scanned": rep.scanned, "coverage": coverage(c),
+                "history": [j.d() for j in (rep.target.history if rep.target else [])][:8],
+                "pairs": [{"person": _person(x.person), "bridge": x.bridge, "reasons": x.reasons, "verdict": x.verdict, "ask": x.ask} for x in rep.pairs]}
+
+    def enrich(self, b: dict) -> dict:
+        c = self.conn()
+        if not c:
+            return {"error": "no database yet"}
+        try:
+            stats = enrich_top(c, top=int(b.get("top") or 150), refresh=bool(b.get("refresh")), log=lambda *a: None)
+        except SystemExit as e:
+            return {"error": str(e)}
+        return {"ok": True, "stats": stats, "coverage": coverage(c)}
 
     def people(self, q: dict) -> dict:
         c = self.conn()
@@ -145,7 +170,7 @@ class App:
             row = c.execute("SELECT value FROM meta WHERE key='me'").fetchone()
             me = row[0] if row else ""
         extra = dict(me=me, me_line=b.get("me_line", ""), profile_url=b.get("url", ""),
-                     findings=[f for f in b.get("findings", []) if f.strip()])
+                     findings=[f for f in b.get("findings", []) if f.strip()], via=b.get("via", ""), via_reason=b.get("via_reason", ""))
         person, target = b.get("person", "").strip(), b.get("target", "").strip()
         role, hook, channel = b.get("role", ""), b.get("hook", ""), b.get("channel", "linkedin")
         d = None; header = ""
@@ -156,6 +181,14 @@ class App:
             if m:
                 d = input_for(m[0], role, hook, channel, **extra)
                 header = f"{m[0].verdict.upper()}: {m[0].ask}"
+        if d is None and c and person and b.get("via"):
+            ql = person.lower()
+            mine = [p for p in score_all(c) if ql in p.name.lower()]
+            if mine:
+                p = mine[0]
+                shape = b.get("shape") if b.get("shape") and b["shape"] != "auto" else "ask-for-intro"
+                d = DraftInput(p.name, p.position, target, role, f"{p.tier}, score {p.strength:.0f}", shape, "Intro ask to a mutual.", hook, channel, **extra)
+                header = f"INTRO via {p.name} to {b['via']}"
         if d is None:
             rc, rr, _ = classify_role(b.get("title", ""), b.get("function") or None)
             d = DraftInput(person or "there", b.get("title", ""), target, role, "not a connection; no history", "cold",
@@ -205,6 +238,7 @@ def make_handler(app: App):
                 if u.path == "/api/target": return self._json(app.target(q))
                 if u.path == "/api/discover": return self._json(app.discover(q))
                 if u.path == "/api/outcomes": return self._json(app.outcomes())
+                if u.path == "/api/bridge": return self._json(app.bridge(q))
                 self._json({"error": "not found"}, 404)
             except Exception as e:  # surface, do not crash the server
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)
@@ -220,6 +254,7 @@ def make_handler(app: App):
                 if u.path == "/api/ingest": return self._json(app.ingest(body))
                 if u.path == "/api/draft": return self._json(app.draft(body))
                 if u.path == "/api/log": return self._json(app.log(body))
+                if u.path == "/api/enrich": return self._json(app.enrich(body))
                 self._json({"error": "not found"}, 404)
             except Exception as e:
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)

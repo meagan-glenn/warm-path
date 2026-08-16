@@ -31,6 +31,7 @@ A fourth case, a peer at a startup the author had just applied to and did not kn
 - `target "Company" --function cs`: everyone you know at the target, each pair scored on both sides. Mutual strength (will they help?) from the export; target strength (can they champion?) from their title. Verdicts: `spend`, `ask-for-routing`, `forward-note`, `cold`, `skip`, with the weak side named. `--alias` for renames and parents, `--orbit` for adjacent companies to seed second-degree asks.
 - `draft "Name" --target X`: a message scaffold keyed to the verdict, with a character count against LinkedIn's response-rate bands. `--shape` overrides (including `feedback` for products you have used and `blurb` for the forwardable two-liner a mutual pastes), `--followup 1|2` for the day-5 bump and day-12 close, `--prompt` prints a paste-ready prompt for any chat model, `--llm` finishes it with Claude. Works for people who are not in your network too (`--title`).
 - `discover "Company" --function cs`: recruiters, likely hiring managers, and in-function peers at the target from Exa's people index. Public profile URLs. This is the empty state's answer.
+- `enrich` then `bridge "Elena Verna" --company Lovable`: the second-degree layer. There is no compliant feed for other people's connections, so the tool infers who of *your* people probably knows the target from overlapping employers and years (public work history from Exa, cached once for your top 150 strong/warm contacts). Each pair is judged on both sides, your relationship observed and their bridge inferred, and it says which is which. Verdicts: `ask-for-intro`, `ask-if-they-know`, `forward-note`, `long-shot`. If nothing overlaps it says so, and that is a real answer.
 - `log` and `outcomes`: what you sent, in what shape, and what came back, plus which threads are due a follow-up. The honest record, and the data the scorer will eventually learn from.
 - `serve`: all of the above in a local web page for people who would rather not use a terminal.
 
@@ -56,6 +57,7 @@ python3 -m warmpath --db data/demo.db target Halberd --function cs              
 python3 -m warmpath --db data/demo.db target Tessellate --function cs            # zero case, empty state
 python3 -m warmpath --db data/demo.db target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian
 python3 -m warmpath --db data/demo.db draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"
+python3 -m warmpath --db data/demo.db bridge "Nora Fitzgerald" --company "Corvid AI"    # second degree, inferred from career overlap
 ```
 
 Prefer a screen to a terminal? Same code, same local database:
@@ -110,6 +112,10 @@ LinkedIn export (zip)                    Exa people index (optional)
         |                                          |
     targets.py  pair verdicts per company  <-------+  (same title classifier)
         |
+    enrich.py   public work history for your top contacts (Exa, cached once)
+        |
+    bridge.py   second degree, inferred: who of mine overlapped with the target
+        |
     drafts.py   verdict-keyed scaffolds, optional Claude
         |
    outcomes.py  what was sent, what happened, what is due
@@ -129,7 +135,7 @@ The full research behind these (what happened to the scraper vendors, why the au
 
 ## Roadmap and open questions
 
-- **Second degree.** No compliant data feed exists for "who does my strong contact know at the target." Planned: a guided flow that deep-links you into LinkedIn's own filtered search, and an optional, off-by-default, single-click capture of the mutuals list on the one profile you are looking at. That is where the 200-times-80 problem is actually solved, and it is a ToS gray zone, so it ships as a separate package with a blunt disclosure.
+- **Second degree, the observed half.** `bridge` infers who knows the target from career overlap, which catches the ex-colleague and misses the conference friend. Reading the actual mutual-connections list is the only way to get the rest, and every bulk way of doing that is a ToS problem. On the table, off by default: a bookmarklet that copies the names on the mutuals page you are already looking at, one click per page, no requests, disclosed as a gray zone. Not built.
 - **Learning from outcomes.** The log exists; the scorer does not read it yet.
 - **User overrides.** "Close," "would vouch," "barely know," persisted, so a wrong score can be corrected once.
 - **Honest limit.** The tool cannot conjure paths that do not exist. For the hottest companies the answer is often "cold route only," and the best it can do is make the cold route a good one.

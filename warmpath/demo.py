@@ -228,3 +228,38 @@ def build(out: Path, seed: int = 7) -> dict:
         w.writerow([ME[0], ME[1], "", "", "", "Fractional Head of Product (synthetic demo persona)", "", "Software", "", "San Francisco Bay Area", "", "", ""])
 
     return {"connections": len(people), "messages": n_msgs, "companies": len({p["company"] for p in people})}
+
+
+# Work histories for the bridge demo. Seeded straight into the enrich table after ingest, so
+# `bridge "Nora Fitzgerald" --company "Corvid AI"` works with no Exa key. All invented.
+DEMO_HISTORIES = {
+    "priya-okafor-demo":     [("Corvid AI", "Head of Customer Success", "2022-06-01", None), ("Brightwater", "Customer Success Manager", "2018-03-01", "2022-05-01")],
+    "hana-kowalski-demo":    [("Northwind Ventures", "Platform Lead", "2020-10-01", None), ("Meridian", "Head of Customer Success", "2017-02-01", "2020-09-01")],
+    "wesley-marchetti-demo": [("Meridian", "VP Customer Experience", "2019-08-01", None), ("Brightwater", "Director of Support", "2016-01-01", "2019-07-01")],
+    "diego-adeyemi-demo":    [("Fractal Ops", "Head of Deployments", "2021-05-01", None), ("Quillon", "Solutions Architect", "2018-01-01", "2021-04-01")],
+    "aisha-haddad-demo":     [("Corvid AI", "Account Executive", "2024-06-01", None), ("Bluecap Software", "SDR", "2021-01-01", "2024-05-01")],
+}
+DEMO_TARGETS = {
+    # a VP Product at Corvid AI who is not in Sam's network: bridge should find Hana (Meridian 2018-2020) and Wesley (Meridian 2019-2020)
+    "Nora Fitzgerald @ Corvid AI": [("Corvid AI", "VP Product", "2021-03-01", None), ("Meridian", "Director of Product", "2018-01-01", "2021-02-01"), ("Kestrel Analytics", "Product Manager", "2014-06-01", "2017-12-01")],
+}
+
+
+def seed_enrichment(db_path: Path) -> None:
+    import json
+    import sqlite3
+    from .enrich import SCHEMA
+    conn = sqlite3.connect(db_path)
+    conn.executescript(SCHEMA)
+    for key, jobs in DEMO_HISTORIES.items():
+        row = conn.execute("SELECT name, company, url FROM people WHERE key=?", (key,)).fetchone()
+        if not row:
+            continue
+        hist = [{"company": c, "title": t, "from": f, "to": e} for c, t, f, e in jobs]
+        conn.execute("INSERT OR REPLACE INTO enrich VALUES (?,?,?,?,?,?,?,?)", (key, row[0], row[1], row[2], "San Francisco Bay Area", json.dumps(hist), "high", "2026-08-15"))
+    for label, jobs in DEMO_TARGETS.items():
+        name, company = [x.strip() for x in label.split("@")]
+        hist = [{"company": c, "title": t, "from": f, "to": e} for c, t, f, e in jobs]
+        conn.execute("INSERT OR REPLACE INTO enrich VALUES (?,?,?,?,?,?,?,?)",
+                     ("target:" + name.lower().replace(" ", "-") + "@" + company.lower().replace(" ", "-"), name, company, "", "San Francisco Bay Area", json.dumps(hist), "high", "2026-08-15"))
+    conn.commit(); conn.close()

@@ -7,6 +7,8 @@
   python -m warmpath discover "Ode with Anthropic" --function cs
   python -m warmpath demo            synthetic export + data/demo.db, no real data needed
   python -m warmpath serve [--db data/demo.db] [--port 8765]   local web UI, 127.0.0.1 only
+  python -m warmpath enrich [--top 150]                  cache work history for your strong/warm contacts (Exa)
+  python -m warmpath bridge "Elena Verna" --company Lovable   who of mine probably knows them
 """
 
 from __future__ import annotations
@@ -15,8 +17,10 @@ import argparse
 import sqlite3
 from pathlib import Path
 
-from .demo import build as build_demo
+from .demo import build as build_demo, seed_enrichment
+from .bridge import bridge
 from .discover import _load_dotenv, discover
+from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
@@ -46,6 +50,7 @@ def cmd_demo(a):
     db = Path("data/demo.db") if a.db == DEFAULT_DB else a.db
     db.parent.mkdir(parents=True, exist_ok=True)
     ingest(out, db)
+    seed_enrichment(db)
     print(f"Synthetic export written to {out}/ ({stats['connections']} connections, {stats['messages']} messages, {stats['companies']} companies).")
     print(f"Ingested into {db}. Every name and company is invented. Try:\n")
     for c in (f'python -m warmpath --db {db} people --top 15',
@@ -53,8 +58,40 @@ def cmd_demo(a):
               f'python -m warmpath --db {db} target Halberd --function cs',
               f'python -m warmpath --db {db} target Tessellate --function cs',
               f'python -m warmpath --db {db} target Tessellate --alias "Fractal Ops" --function cs --orbit "Northwind Ventures" --orbit Meridian',
-              f'python -m warmpath --db {db} draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"'):
+              f'python -m warmpath --db {db} draft "Elena Castellano" --target "Corvid AI" --function cs --role "CS Lead" --hook "your post on onboarding handoffs stuck with me"',
+              f'python -m warmpath --db {db} bridge "Nora Fitzgerald" --company "Corvid AI"'):
         print("  " + c)
+
+
+def cmd_enrich(a):
+    conn = _conn(a.db)
+    if a.status:
+        print(coverage(conn, top=a.top)); return
+    print(enrich_top(conn, top=a.top, refresh=a.refresh))
+
+
+def cmd_bridge(a):
+    conn = _conn(a.db)
+    rep = bridge(conn, a.person, a.company, top=a.top)
+    print(f"=== Bridge to {a.person} ({a.company})")
+    if rep.target and rep.target.history:
+        hist = "; ".join(f"{j.company} {(j.start or '?')[:4]}-{(j.end or 'now')[:4]}" for j in rep.target.history[:6])
+        print(f"Their history (public index): {hist}")
+    if rep.note:
+        print(rep.note); return
+    cov = coverage(conn)
+    print(f"Scanned {rep.scanned} enriched contacts ({cov['enriched']}/{cov['in_scope']} of your top strong/warm; run `enrich` for more).\n")
+    if not rep.pairs:
+        print("No career overlap between your enriched contacts and this person. No inferred bridge; go cold, or check the mutuals list by hand for the non-work tie.")
+        return
+    for x in rep.pairs:
+        p = x.person
+        print(f"[{x.verdict.upper()}] {p.name}  |  {p.position} at {p.company}")
+        print(f"    you: {p.strength:.0f} ({p.tier})   bridge: {x.bridge} ({'; '.join(x.reasons)})")
+        print(f"    -> {x.ask}")
+        print(f"    draft: python -m warmpath draft \"{p.name}\" --target \"{a.company}\" --shape {x.verdict if x.verdict in ('ask-for-intro','ask-if-they-know') else 'forward-note'} --via \"{a.person}\"")
+        print()
+    print("Verify: open the target's profile > mutual connections > search each name. Their side of the pair is inferred from career overlap, not observed.")
 
 
 def cmd_serve(a):
@@ -111,14 +148,26 @@ def cmd_target(a):
 def cmd_draft(a):
     conn = _conn(a.db)
     me = (conn.execute("SELECT value FROM meta WHERE key='me'").fetchone() or [""])[0]
-    extra = dict(me=me, me_line=a.me_line or "", profile_url=a.url or "", findings=a.finding or [])
+    extra = dict(me=me, me_line=a.me_line or "", profile_url=a.url or "", findings=a.finding or [], via=a.via or "")
     rep = build_report(conn, a.target, aliases=a.alias, role_function=a.function)
     q = a.person.lower()
     matches = [t for t in rep.matches if q in t.person.name.lower() or q in (t.person.url or "").lower()]
+    if not matches and a.via:
+        # the mutual is in my network but not at the target company: draft to them directly
+        from .score import score_all
+        mine = [p for p in score_all(conn) if q in p.name.lower()]
+        if mine:
+            p = mine[0]
+            d = DraftInput(p.name, p.position, a.target, a.role or "", f"{p.tier}, score {p.strength:.0f}; " + ("; ".join(p.reasons) or "no history"),
+                           a.shape if a.shape != "auto" else "ask-for-intro", "Intro ask to a mutual.", a.hook or "", a.channel, **extra)
+            header = f"To: {p.name}  |  {p.position} at {p.company}\nIntro ask, via them to {a.via} at {a.target}"
+            matches = None
     if matches:
         t = matches[0]
         d = input_for(t, a.role or "", a.hook or "", a.channel, **extra)
         header = f"To: {t.person.name}  |  {t.person.position} at {t.person.company}\nVerdict: {t.verdict.upper()}  ({t.ask})"
+    elif matches is None:
+        pass
     else:
         # Not in your network (a discover result, say). Cold by definition.
         rc, rr, _ = classify_role(a.title or "", a.function)
@@ -191,6 +240,10 @@ def main(argv=None):
 
     s = sub.add_parser("ingest"); s.add_argument("export"); s.add_argument("--me"); s.set_defaults(fn=cmd_ingest)
     s = sub.add_parser("demo"); s.add_argument("--out", default="demo/export"); s.set_defaults(fn=cmd_demo)
+    s = sub.add_parser("enrich"); s.add_argument("--top", type=int, default=150); s.add_argument("--refresh", action="store_true")
+    s.add_argument("--status", action="store_true"); s.set_defaults(fn=cmd_enrich)
+    s = sub.add_parser("bridge"); s.add_argument("person"); s.add_argument("--company", required=True); s.add_argument("--top", type=int, default=8)
+    s.set_defaults(fn=cmd_bridge)
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8765); s.add_argument("--no-browser", action="store_true"); s.set_defaults(fn=cmd_serve)
     s = sub.add_parser("people"); s.add_argument("--top", type=int, default=30); s.add_argument("--tier"); s.add_argument("--company"); s.set_defaults(fn=cmd_people)
     s = sub.add_parser("target"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
@@ -199,11 +252,12 @@ def main(argv=None):
     s = sub.add_parser("draft"); s.add_argument("person"); s.add_argument("--target", required=True)
     s.add_argument("--alias", action="append", default=[]); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
     s.add_argument("--role"); s.add_argument("--hook"); s.add_argument("--channel", choices=["linkedin", "email"], default="linkedin")
-    s.add_argument("--shape", choices=["auto", "spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb"], default="auto",
+    s.add_argument("--shape", choices=["auto", "spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb", "ask-for-intro", "ask-if-they-know"], default="auto",
                    help="override the verdict-chosen shape")
     s.add_argument("--followup", type=int, choices=[1, 2], default=0, help="1 = day 5-7 bump, 2 = day 12-14 close")
     s.add_argument("--finding", action="append", help="one-line product finding, up to 3, for --shape feedback")
     s.add_argument("--title", help="their title, when they are not in your network")
+    s.add_argument("--via", help="for intro shapes: the target person this mutual can reach")
     s.add_argument("--me-line", help="one line on you, for the forwardable blurb")
     s.add_argument("--url", help="your profile or portfolio link, for the blurb")
     s.add_argument("--prompt", action="store_true", help="print a paste-ready prompt for any chat model instead of a draft")

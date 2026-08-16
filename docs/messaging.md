@@ -75,6 +75,10 @@ The relationship verdict says how much you can ask for. The person's seat says w
 
 Evidence: the advice-seeking effect (section 2) is about people who *can* form a view, so it applies to champions and peers, not to process owners. LinkedIn's InMail data (section 1) rewards specificity and brevity, and the recruiter shape is the most specific and shortest of the four. The rest is judgment from having sent the wrong ask to the wrong seat.
 
+## 9. Intro asks: let the mutual say no
+
+`ask-for-intro` is a real ask (Flynn and Lake: make it plainly), with the blurb attached so the cost to them is one paste, and an explicit out ("if you do not know them well enough, just say so"). The out is not a hedge; it is there because the tool *inferred* that they know the target and could be wrong, and a mutual who is asked to intro someone they barely know either declines awkwardly or makes a weak intro. `ask-if-they-know` exists for the thin-overlap case: check first, ask nothing yet. Both are judgment; the double opt-in convention (section 6) is the closest thing to a standard.
+
 ## What is judgment, not evidence
 
 - **The disclosure clause.** "Full disclosure, I applied. Not asking you to do anything with that." No study tests this. It comes from the author's own experience that the alternative, a friendly message with a hidden agenda, reads as exactly that when the ask arrives later. Transparency here is a bet on trust over cleverness. Outcomes are logged so this can be checked over time.
