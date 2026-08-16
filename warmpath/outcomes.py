@@ -47,6 +47,28 @@ def log(conn: sqlite3.Connection, person: str, company: str, shape: str | None, 
     return f"logged {person} @ {company}: {shape or 'other'} via {channel or 'linkedin'}, {status or 'sent'} {sent_on or today}"
 
 
+FOLLOWUP_1 = 5    # days after send: one bump (the single biggest lift in every follow-up corpus)
+FOLLOWUP_2 = 12   # days: close the loop, then stop; a third follow-up is noise
+
+
 def report(conn: sqlite3.Connection) -> list[tuple]:
     conn.executescript(SCHEMA)
     return conn.execute("SELECT person, company, shape, channel, sent_on, status, updated_on, COALESCE(note,'') FROM outcomes ORDER BY sent_on, id").fetchall()
+
+
+def due(rows: list[tuple], today: date | None = None) -> list[tuple[str, str, int, str]]:
+    """Threads still at 'sent' with a follow-up due: (person, company, days_since, which)."""
+    today = today or date.today()
+    out = []
+    for person, company, shape, channel, sent, status, upd, note in rows:
+        if status != "sent" or not sent:
+            continue
+        try:
+            days = (today - date.fromisoformat(sent)).days
+        except ValueError:
+            continue
+        if days >= FOLLOWUP_2:
+            out.append((person, company, days, "close the loop (--followup 2), then stop"))
+        elif days >= FOLLOWUP_1:
+            out.append((person, company, days, "one bump (--followup 1)"))
+    return out

@@ -16,9 +16,9 @@ from pathlib import Path
 
 from .demo import build as build_demo
 from .discover import _load_dotenv, discover
-from .drafts import draft_for
+from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
-from .outcomes import STATUSES, log, report
+from .outcomes import STATUSES, due, log, report
 from .score import score_all
 from .targets import build_report
 
@@ -103,17 +103,33 @@ def cmd_target(a):
 
 
 def cmd_draft(a):
-    rep = build_report(_conn(a.db), a.target, aliases=a.alias, role_function=a.function)
+    conn = _conn(a.db)
+    me = (conn.execute("SELECT value FROM meta WHERE key='me'").fetchone() or [""])[0]
+    extra = dict(me=me, me_line=a.me_line or "", profile_url=a.url or "", findings=a.finding or [])
+    rep = build_report(conn, a.target, aliases=a.alias, role_function=a.function)
     q = a.person.lower()
     matches = [t for t in rep.matches if q in t.person.name.lower() or q in (t.person.url or "").lower()]
-    if not matches:
-        raise SystemExit(f"No connection matching '{a.person}' at {a.target}. Run `target` first to see who is there.")
-    t = matches[0]
-    print(f"To: {t.person.name}  |  {t.person.position} at {t.person.company}")
-    print(f"Verdict: {t.verdict.upper()}  ({t.ask})")
-    print(f"Channel: {a.channel}" + ("  |  LLM polish on" if a.llm else "  |  scaffold only, add --llm to finish it"))
+    if matches:
+        t = matches[0]
+        d = input_for(t, a.role or "", a.hook or "", a.channel, **extra)
+        header = f"To: {t.person.name}  |  {t.person.position} at {t.person.company}\nVerdict: {t.verdict.upper()}  ({t.ask})"
+    else:
+        # Not in your network (a discover result, say). Cold by definition.
+        d = DraftInput(a.person, a.title or "", a.target, a.role or "", "not a connection; no history", "cold",
+                       "Cold outreach to someone you do not know. Reason, question, disclosure, small ask.", a.hook or "", a.channel, **extra)
+        header = f"To: {a.person}  |  {a.title or '(title unknown, pass --title)'} at {a.target}\nVerdict: COLD (not in your network)"
+    if a.shape and a.shape != "auto":
+        d.verdict = a.shape
+    if a.prompt:
+        print(prompt_for(d)); return
+    print(header)
+    mode = f"followup {a.followup}" if a.followup else ("LLM polish on" if a.llm else "scaffold; --llm to finish, or --prompt to paste elsewhere")
+    print(f"Shape: {d.verdict}  |  Channel: {a.channel}  |  {mode}")
     print("-" * 60)
-    print(draft_for(t, a.role or "", a.hook or "", a.channel, a.llm))
+    out = render(d, a.llm, a.followup)
+    print(out)
+    print("-" * 60)
+    print(length_note(out, a.channel) + "  Send Mon-Thu if you can; Fri and Sat underperform.")
 
 
 def cmd_discover(a):
@@ -152,6 +168,12 @@ def cmd_outcomes(a):
     print(f"{len(rows)} threads. " + ", ".join(f"{k}={v}" for k, v in sorted(by.items())) + "\n")
     for person, company, shape, channel, sent, status, upd, note in rows:
         print(f"{sent}  {status:12s} {person:22s} @ {company:16s} {shape:16s} {channel:9s} {note}")
+    d = due(rows)
+    if d:
+        print("\nFollow-ups due (no reply yet):")
+        for person, company, days, what in d:
+            print(f"  {person} @ {company}: day {days}, {what}")
+        print("  Log a reply with --status replied, or a stop with --status silent, and these clear.")
 
 
 def main(argv=None):
@@ -169,6 +191,14 @@ def main(argv=None):
     s = sub.add_parser("draft"); s.add_argument("person"); s.add_argument("--target", required=True)
     s.add_argument("--alias", action="append", default=[]); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
     s.add_argument("--role"); s.add_argument("--hook"); s.add_argument("--channel", choices=["linkedin", "email"], default="linkedin")
+    s.add_argument("--shape", choices=["auto", "spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb"], default="auto",
+                   help="override the verdict-chosen shape")
+    s.add_argument("--followup", type=int, choices=[1, 2], default=0, help="1 = day 5-7 bump, 2 = day 12-14 close")
+    s.add_argument("--finding", action="append", help="one-line product finding, up to 3, for --shape feedback")
+    s.add_argument("--title", help="their title, when they are not in your network")
+    s.add_argument("--me-line", help="one line on you, for the forwardable blurb")
+    s.add_argument("--url", help="your profile or portfolio link, for the blurb")
+    s.add_argument("--prompt", action="store_true", help="print a paste-ready prompt for any chat model instead of a draft")
     s.add_argument("--llm", action="store_true"); s.set_defaults(fn=cmd_draft)
     s = sub.add_parser("discover"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
     s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])

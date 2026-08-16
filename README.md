@@ -29,7 +29,7 @@ A fourth case, a peer at a startup the author had just applied to and did not kn
 - `ingest` the official LinkedIn export (ZIP or folder). Message content is read for counts and dates and never stored.
 - `people`: every relationship scored 0 to 100 with the reasons printed. Tiers: strong, warm, weak, cold-unanswered (you wrote, they never replied), cold-untested.
 - `target "Company" --function cs`: everyone you know at the target, each pair scored on both sides. Mutual strength (will they help?) from the export; target strength (can they champion?) from their title. Verdicts: `spend`, `ask-for-routing`, `forward-note`, `cold`, `skip`, with the weak side named. `--alias` for renames and parents, `--orbit` for adjacent companies to seed second-degree asks.
-- `draft "Name" --target X`: a message scaffold keyed to the verdict. Optional Claude polish with `--llm`.
+- `draft "Name" --target X`: a message scaffold keyed to the verdict, with a character count against LinkedIn's response-rate bands. `--shape` overrides (including `feedback` for products you have used and `blurb` for the forwardable two-liner a mutual pastes), `--followup 1|2` for the day-5 bump and day-12 close, `--prompt` prints a paste-ready prompt for any chat model, `--llm` finishes it with Claude. Works for people who are not in your network too (`--title`).
 - `discover "Company" --function cs`: recruiters, likely hiring managers, and in-function peers at the target from Exa's people index. Public profile URLs. This is the empty state's answer.
 - `log` and `outcomes`: what you sent, in what shape, and what came back. The honest record, and the data the scorer will eventually learn from.
 
@@ -77,16 +77,18 @@ Two optional extras, both off until you install them and put a key in `./.env`:
 
 The pair verdict names the weak side, because the ask differs. Strong relationship in the wrong seat: "who runs hiring for this?" Right seat with a thin relationship: "would you forward a two-line note?" Recruiter who ignored you twice: stop.
 
-## Draft shapes
+## Draft shapes, and the evidence behind them
 
-The one that worked for a cold in-function peer, and the default for `cold` and `forward-note`:
+The default for `cold` and `forward-note`, and the one that worked for a cold in-function peer:
 
 1. One specific reason you connected. Not "love what you're building."
 2. One genuine question about their work.
 3. The application in a single transparent clause, explicitly not the ask.
-4. A small ask, their call: answer here, or 15 minutes.
+4. One small ask, their call: answer here, or 15 minutes.
 
-`ask-for-routing` asks who owns the req. `spend` asks for a read on the team and lets them offer to advocate. Every draft says exactly what it is doing and why; the LLM only tightens wording.
+`ask-for-routing` asks who owns the req and attaches the forwardable blurb. `spend` asks for a read on the team and lets them offer to advocate. `feedback` leads with three product findings, one line each, then the disclosure. Follow-ups: one bump at day 5, one close at day 12, none after; `outcomes` tells you when they are due.
+
+The rules these follow (under 400 characters, ask for advice not favors, one plain ask, spend on moderately weak ties, follow up once) each trace to a named source: LinkedIn's InMail response data, Brooks/Gino/Schweitzer 2015, Flynn and Lake 2008, Rajkumar et al. in Science 2022, and the large follow-up corpora from sales email. What is evidence, what is judgment, and what we could not find is in [docs/messaging.md](docs/messaging.md).
 
 ## Architecture
 

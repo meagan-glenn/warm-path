@@ -61,3 +61,38 @@ class DemoSmoke(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Drafts(unittest.TestCase):
+    def _d(self, verdict, **kw):
+        from warmpath.drafts import DraftInput
+        return DraftInput("Elena Castellano", "CSM", "Corvid AI", "CS Lead", "weak", verdict, "x", "your post stuck with me",
+                          me="Sam Rivera", me_line="a CS-turned-product lead", profile_url="https://x", **kw)
+
+    def test_shapes_under_soft_limit(self):
+        from warmpath.drafts import HARD_LIMIT, SOFT_LIMIT, scaffold
+        for v in ("spend", "cold", "forward-note", "feedback"):
+            body = scaffold(self._d(v, findings=["a", "b", "c"])).split("\n---")[0]
+            self.assertLessEqual(len(body), SOFT_LIMIT + 60, v)   # scaffold plus a short hook stays in the band
+            self.assertLessEqual(len(body), HARD_LIMIT, v)
+
+    def test_no_em_dashes(self):
+        from warmpath.drafts import STYLE, followup, scaffold
+        for v in ("spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb"):
+            self.assertNotIn("—", scaffold(self._d(v)))
+        self.assertNotIn("—", followup(self._d("cold"), 1) + followup(self._d("cold"), 2) + STYLE)
+
+    def test_blurb_is_third_person_with_link(self):
+        from warmpath.drafts import blurb
+        b = blurb(self._d("ask-for-routing"))
+        self.assertTrue(b.startswith("Sam Rivera is "))
+        self.assertIn("https://x", b)
+
+    def test_followup_due(self):
+        from datetime import date
+        from warmpath.outcomes import due
+        rows = [("A", "X", "cold", "linkedin", "2026-08-01", "sent", "", ""),
+                ("B", "X", "cold", "linkedin", "2026-08-09", "sent", "", ""),
+                ("C", "X", "cold", "linkedin", "2026-08-01", "replied", "", "")]
+        d = due(rows, today=date(2026, 8, 15))
+        self.assertEqual([(p, w.split(" (")[0]) for p, _, _, w in d], [("A", "close the loop"), ("B", "one bump")])
