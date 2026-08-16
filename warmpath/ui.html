@@ -223,10 +223,28 @@ $('#f-target').onsubmit = async e => {
   if (r.error) { $('#target-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
   let h = '';
   if (!r.matches.length) {
-    h += `<div class="empty"><b>No 1st-degree connections at ${esc(company)}${r.aliases.length ? ' / ' + esc(r.aliases.join(', ')) : ''}.</b> This is the empty state. Next moves:
-      <ol><li>Check aliases: recent rename, acquired startup, parent entity. Add them above.</li>
-      <li>Find recruiters and the hiring manager from outside LinkedIn: <a href="#" onclick="tab('discover');$('#f-discover [name=company]').value=${JSON.stringify(company)};return false">Discover ${esc(company)}</a>.</li>
-      <li>Second degree: which of your strong relationships know someone there? Add orbit companies above.</li></ol></div>`;
+    h += `<div class="empty"><b>Nobody in your network works at ${esc(company)}${r.aliases.length ? ' / ' + esc(r.aliases.join(', ')) : ''} yet.</b> That is normal; most target companies look like this. The plan is to find the right people from outside LinkedIn and open a cold path well.
+      ${STATUS.exa ? '<p id="auto-disc" class="small" style="margin:8px 0 0">Searching the public people index for recruiters, likely hiring managers, and peers…</p>' :
+        `<ol><li>Turn on Discover (<code>pip install exa-py</code> plus <code>EXA_API_KEY</code> in <code>.env</code>) and it will find recruiters and the hiring manager for you.</li>
+         <li>If the company renamed or was acquired, add the old name under Aliases and run again.</li>
+         <li>Add investors, competitors, or their staff's former employers under Orbit to see your strong contacts near them.</li></ol>`}</div>`;
+    if (STATUS.exa) {
+      $('#target-out').innerHTML = h;
+      const dr = await api('/api/discover?' + q({ company, function: fn, alias: r.aliases }));
+      let dh = '';
+      if (dr.error || dr.note) dh = `<p class="small">${esc(dr.error || dr.note)}</p>`;
+      else {
+        for (const [k, label] of [['recruiters', 'Recruiters and TA (route to process)'], ['leaders', 'Likely hiring managers (champions)'], ['peers', 'In-function peers'], ['roster', 'Everyone else the index has there']]) {
+          if (!dr[k].length) continue;
+          dh += `<h3 style="font-size:14px;margin:18px 0 8px">${label}</h3><div class="cards">` + dr[k].map(d => discCard(d, company)).join('') + '</div>';
+        }
+        dh = dh ? `<p class="small" style="margin-top:14px">Found from the public index. Everyone here is a cold contact; the Draft button uses the cold shape (or pick <b>feedback</b> if you have used the product). If the company name is ambiguous, use the Discover tab with an "About" line.</p>` + dh
+                : `<div class="empty">The index has nobody confirmed at ${esc(company)}. Try the Discover tab with an "About" line (e.g. "AI voice dictation app, San Francisco") or an alias.</div>`;
+      }
+      const el = $('#auto-disc'); if (el) el.remove();
+      $('#target-out').innerHTML += dh;
+      return;
+    }
   } else {
     h += `<p class="small">${r.matches.length} connection(s) at ${esc(company)}${fn ? ' · function ' + fn : ''}. Verdicts name the weak side of each pair.</p><div class="cards">`;
     h += r.matches.map(m => personCard(m, company)).join('') + '</div>';
