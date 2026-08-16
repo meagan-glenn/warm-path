@@ -63,6 +63,7 @@ class BridgeReport:
     pairs: list[BridgePair] = field(default_factory=list)
     scanned: int = 0
     note: str = ""
+    hubs: list[Person] = field(default_factory=list)   # people you marked 'hub': ask regardless of overlap
 
 
 def _score_pair(mine: Profile, target: Profile) -> tuple[int, list[str]]:
@@ -136,6 +137,7 @@ def bridge(conn: sqlite3.Connection, target_name: str, target_company: str, top:
         rep.note = "No contacts enriched yet. Run `python -m warmpath enrich` once (top 150 strong/warm contacts, cached)."
         return rep
     people = {p.key: p for p in score_all(conn)}
+    rep.hubs = [p for p in people.values() if "hub" in p.flags]
     rep.scanned = len(profiles)
     for key, prof in profiles.items():
         p = people.get(key)

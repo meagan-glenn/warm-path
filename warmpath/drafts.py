@@ -25,6 +25,7 @@ Shapes:
   blurb            the forwardable two-liner, third person, for the mutual to paste
   ask-for-intro    to a mutual who likely knows the target (from `bridge`): intro ask + blurb
   ask-if-they-know to a mutual with thin overlap: check first, ask nothing yet
+  relay            to my contact: would you ask your coworker X to intro me to Y at the target
   followup 1 / 2   day 5-7 bump, day 12-14 close; nothing after
 
 `--llm` (anthropic installed, key set) polishes the scaffold. `--prompt` prints a
@@ -73,6 +74,7 @@ class DraftInput:
     role_class: str = "other"     # route (recruiter/TA) / champion (senior) / peer / other; drives the cold ask
     via: str = ""                 # for intro shapes: the target person this mutual can reach
     via_reason: str = ""          # why we think they know the target ("both at Amplitude 2018-2021")
+    knows: str = ""               # relay shape: who the coworker knows at the target
 
 
 def _first(name: str) -> str:
@@ -85,6 +87,9 @@ def blurb(d: DraftInput) -> str:
     who = d.me_line or "[one line: what you do and the result you are known for]"
     role = d.role or "[role]"
     link = d.profile_url or "[your LinkedIn or portfolio URL]"
+    if d.verdict == "relay":
+        return (f"{me} is {who}. They applied for the {role} role at {d.company} and asked whether anyone on our side "
+                f"knew the team there. Worth a look if you are open to it: {link}")
     if d.via:
         return (f"{me} is {who}. They applied for the {role} role at {d.company} and asked if I would connect you two, "
                 f"since it looks like it sits near your team. Worth a look: {link}")
@@ -168,6 +173,17 @@ def scaffold(d: DraftInput) -> str:
             f"Hey {first}, {hook}\n\n"
             f"Do you know {d.via} well{why}? I applied for the {role} role at {d.company} and it sits near their team. "
             f"If you would be comfortable making a two-line intro I would be grateful. If you do not know them well enough, just say so, genuinely fine.\n\n"
+            f"---\n{blurb(d)}\n---"
+        )
+    if v == "relay":
+        cow = d.via or "[their coworker]"
+        who = f" knows {d.knows} there" if d.knows else " knows people there"
+        why = f" ({d.via_reason})" if d.via_reason else ""
+        return (
+            f"Hey {first}, {hook}\n\n"
+            f"I am going after the {role} role at {d.company} and do not have a way in myself. It looks like your colleague {cow}{who}{why}. "
+            f"Would you be up for asking {cow.split()[0]} whether they would be comfortable making an intro? "
+            f"Two-line version below so it costs you a paste. If it is awkward, say so and I will go cold.\n\n"
             f"---\n{blurb(d)}\n---"
         )
     if v == "ask-if-they-know":

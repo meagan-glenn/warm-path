@@ -130,7 +130,7 @@ def load_all(conn: sqlite3.Connection) -> dict[str, Profile]:
     conn.executescript(SCHEMA)
     out = {}
     for key, name, company, url, loc, hist, conf in conn.execute("SELECT key, name, company, url, location, history, confidence FROM enrich"):
-        if key.startswith("target:"):
+        if key.startswith("target:") or key.startswith("roster:"):
             continue
         out[key] = Profile(name, company, url, loc, [Job(j["company"], j["title"], j.get("from"), j.get("to")) for j in json.loads(hist or "[]")], conf)
     return out

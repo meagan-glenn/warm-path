@@ -9,6 +9,8 @@
   python -m warmpath serve [--db data/demo.db] [--port 8765]   local web UI, 127.0.0.1 only
   python -m warmpath enrich [--top 150]                  cache work history for your strong/warm contacts (Exa)
   python -m warmpath bridge "Elena Verna" --company Lovable   who of mine probably knows them
+  python -m warmpath relay --via "Eduardo Rosenfeld" --target "Wispr Flow"   my contact -> their coworker -> target
+  python -m warmpath mark "Santiana Brace" hub          one-click overrides: close / vouch / barely / hub
 """
 
 from __future__ import annotations
@@ -24,7 +26,8 @@ from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
-from .score import score_all
+from .relay import relay
+from .score import FLAGS, mark, score_all
 from .serve import serve
 from .targets import build_report, classify_role
 
@@ -82,8 +85,7 @@ def cmd_bridge(a):
     cov = coverage(conn)
     print(f"Scanned {rep.scanned} enriched contacts ({cov['enriched']}/{cov['in_scope']} of your top strong/warm; run `enrich` for more).\n")
     if not rep.pairs:
-        print("No career overlap between your enriched contacts and this person. No inferred bridge; go cold, or check the mutuals list by hand for the non-work tie.")
-        return
+        print("No career overlap between your enriched contacts and this person. No inferred bridge; go cold, or check the mutuals list by hand for the non-work tie.\n")
     for x in rep.pairs:
         p = x.person
         print(f"[{x.verdict.upper()}] {p.name}  |  {p.position} at {p.company}")
@@ -91,7 +93,35 @@ def cmd_bridge(a):
         print(f"    -> {x.ask}")
         print(f"    draft: python -m warmpath draft \"{p.name}\" --target \"{a.company}\" --shape {x.verdict if x.verdict in ('ask-for-intro','ask-if-they-know') else 'forward-note'} --via \"{a.person}\"")
         print()
+    if rep.hubs:
+        print("Hubs you marked (ask regardless of overlap; weigh their geography):")
+        for p in rep.hubs:
+            print(f"  {p.name}  |  {p.position} at {p.company}   -> python -m warmpath draft \"{p.name}\" --target \"{a.company}\" --shape ask-if-they-know --via \"{a.person}\"")
+        print()
     print("Verify: open the target's profile > mutual connections > search each name. Their side of the pair is inferred from career overlap, not observed.")
+
+
+def cmd_relay(a):
+    conn = _conn(a.db)
+    rep = relay(conn, a.via, a.target, about=a.about or "", role_function=a.function, top=a.top)
+    print(f"=== Relay: you -> {a.via} ({rep.hub_company or '?'}) -> coworker -> {a.target}")
+    if rep.note:
+        print(rep.note); return
+    print(f"Scanned {rep.hub_size} people at {rep.hub_company} x {rep.target_size} at {a.target} (public index, cached).\n")
+    if not rep.relays:
+        print(f"No shared employers between {rep.hub_company} and {a.target} rosters beyond very large companies. Ask {a.via} the open question instead: 'anyone on your side know people at {a.target}?'")
+        return
+    for x in rep.relays:
+        print(f"{x.hub_person.name}  |  {x.hub_title} at {rep.hub_company}   ->   {x.target_person.name}  |  {x.target_title} at {a.target}")
+        print(f"    link {x.link_score}: {x.link_reason}")
+        print(f"    close to {a.via.split()[0]} {x.close_score}: {x.close_reason}")
+        print(f"    draft: python -m warmpath draft \"{a.via}\" --target \"{a.target}\" --shape relay --via \"{x.hub_person.name}\" --hook \"...\"  (then say who they know: {x.target_person.name})")
+        print()
+    print("Everything past your contact is inferred from public work history. The ask to your contact should say that plainly.")
+
+
+def cmd_mark(a):
+    print(mark(_conn(a.db), a.person, a.flag, remove=a.remove))
 
 
 def cmd_serve(a):
@@ -148,13 +178,12 @@ def cmd_target(a):
 def cmd_draft(a):
     conn = _conn(a.db)
     me = (conn.execute("SELECT value FROM meta WHERE key='me'").fetchone() or [""])[0]
-    extra = dict(me=me, me_line=a.me_line or "", profile_url=a.url or "", findings=a.finding or [], via=a.via or "")
+    extra = dict(me=me, me_line=a.me_line or "", profile_url=a.url or "", findings=a.finding or [], via=a.via or "", knows=a.knows or "")
     rep = build_report(conn, a.target, aliases=a.alias, role_function=a.function)
     q = a.person.lower()
     matches = [t for t in rep.matches if q in t.person.name.lower() or q in (t.person.url or "").lower()]
     if not matches and a.via:
         # the mutual is in my network but not at the target company: draft to them directly
-        from .score import score_all
         mine = [p for p in score_all(conn) if q in p.name.lower()]
         if mine:
             p = mine[0]
@@ -244,6 +273,10 @@ def main(argv=None):
     s.add_argument("--status", action="store_true"); s.set_defaults(fn=cmd_enrich)
     s = sub.add_parser("bridge"); s.add_argument("person"); s.add_argument("--company", required=True); s.add_argument("--top", type=int, default=8)
     s.set_defaults(fn=cmd_bridge)
+    s = sub.add_parser("relay"); s.add_argument("--via", required=True); s.add_argument("--target", required=True)
+    s.add_argument("--about"); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"]); s.add_argument("--top", type=int, default=8)
+    s.set_defaults(fn=cmd_relay)
+    s = sub.add_parser("mark"); s.add_argument("person"); s.add_argument("flag", choices=list(FLAGS)); s.add_argument("--remove", action="store_true"); s.set_defaults(fn=cmd_mark)
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8765); s.add_argument("--no-browser", action="store_true"); s.set_defaults(fn=cmd_serve)
     s = sub.add_parser("people"); s.add_argument("--top", type=int, default=30); s.add_argument("--tier"); s.add_argument("--company"); s.set_defaults(fn=cmd_people)
     s = sub.add_parser("target"); s.add_argument("company"); s.add_argument("--alias", action="append", default=[])
@@ -252,12 +285,13 @@ def main(argv=None):
     s = sub.add_parser("draft"); s.add_argument("person"); s.add_argument("--target", required=True)
     s.add_argument("--alias", action="append", default=[]); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"])
     s.add_argument("--role"); s.add_argument("--hook"); s.add_argument("--channel", choices=["linkedin", "email"], default="linkedin")
-    s.add_argument("--shape", choices=["auto", "spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb", "ask-for-intro", "ask-if-they-know"], default="auto",
+    s.add_argument("--shape", choices=["auto", "spend", "ask-for-routing", "forward-note", "cold", "feedback", "blurb", "ask-for-intro", "ask-if-they-know", "relay"], default="auto",
                    help="override the verdict-chosen shape")
     s.add_argument("--followup", type=int, choices=[1, 2], default=0, help="1 = day 5-7 bump, 2 = day 12-14 close")
     s.add_argument("--finding", action="append", help="one-line product finding, up to 3, for --shape feedback")
     s.add_argument("--title", help="their title, when they are not in your network")
-    s.add_argument("--via", help="for intro shapes: the target person this mutual can reach")
+    s.add_argument("--via", help="intro shapes: the target person this mutual can reach; relay shape: their coworker to ask")
+    s.add_argument("--knows", help="relay shape: who that coworker knows at the target")
     s.add_argument("--me-line", help="one line on you, for the forwardable blurb")
     s.add_argument("--url", help="your profile or portfolio link, for the blurb")
     s.add_argument("--prompt", action="store_true", help="print a paste-ready prompt for any chat model instead of a draft")

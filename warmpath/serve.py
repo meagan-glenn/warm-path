@@ -24,7 +24,8 @@ from .enrich import coverage, enrich_top
 from .drafts import DraftInput, input_for, length_note, prompt_for, render
 from .ingest import ingest
 from .outcomes import STATUSES, due, log, report
-from .score import score_all
+from .relay import relay
+from .score import FLAGS, mark, score_all
 from .targets import build_report, classify_role
 
 UI = Path(__file__).with_name("ui.html")
@@ -34,7 +35,7 @@ FUNCTIONS = ["product", "cs", "gtm", "eng", "ops", "design"]
 def _person(p) -> dict:
     return {"key": p.key, "name": p.name, "url": p.url, "company": p.company, "position": p.position,
             "connected_on": p.connected_on, "strength": round(p.strength), "tier": p.tier, "reasons": p.reasons,
-            "sent": p.sent, "received": p.received, "last_msg": p.last_msg}
+            "sent": p.sent, "received": p.received, "last_msg": p.last_msg, "flags": p.flags}
 
 
 class App:
@@ -72,7 +73,30 @@ class App:
         rep = bridge(c, name, company, top=int(q.get("top", ["8"])[0]))
         return {"target": name, "company": company, "note": rep.note, "scanned": rep.scanned, "coverage": coverage(c),
                 "history": [j.d() for j in (rep.target.history if rep.target else [])][:8],
+                "hubs": [_person(p) for p in rep.hubs],
                 "pairs": [{"person": _person(x.person), "bridge": x.bridge, "reasons": x.reasons, "verdict": x.verdict, "ask": x.ask} for x in rep.pairs]}
+
+    def relay(self, q: dict) -> dict:
+        c = self.conn()
+        if not c:
+            return {"error": "no database yet"}
+        via, target = q.get("via", [""])[0].strip(), q.get("target", [""])[0].strip()
+        if not via or not target:
+            return {"error": "via and target required"}
+        rep = relay(c, via, target, about=q.get("about", [""])[0], role_function=q.get("function", [""])[0] or None)
+        def prof(p, title):
+            return {"name": p.name, "title": title, "company": p.company, "url": p.url, "location": p.location}
+        return {"via": via, "hub": rep.hub_company, "target": target, "note": rep.note, "hub_size": rep.hub_size, "target_size": rep.target_size,
+                "relays": [{"hub_person": prof(x.hub_person, x.hub_title), "target_person": prof(x.target_person, x.target_title),
+                            "link": x.link_score, "link_reason": x.link_reason, "close": x.close_score, "close_reason": x.close_reason} for x in rep.relays]}
+
+    def mark(self, b: dict) -> dict:
+        c = self.conn()
+        if not c:
+            return {"error": "no database yet"}
+        if b.get("flag") not in FLAGS:
+            return {"error": f"flag must be one of {FLAGS}"}
+        return {"ok": True, "message": mark(c, b.get("person", ""), b["flag"], remove=bool(b.get("remove")))}
 
     def enrich(self, b: dict) -> dict:
         c = self.conn()
@@ -170,7 +194,7 @@ class App:
             row = c.execute("SELECT value FROM meta WHERE key='me'").fetchone()
             me = row[0] if row else ""
         extra = dict(me=me, me_line=b.get("me_line", ""), profile_url=b.get("url", ""),
-                     findings=[f for f in b.get("findings", []) if f.strip()], via=b.get("via", ""), via_reason=b.get("via_reason", ""))
+                     findings=[f for f in b.get("findings", []) if f.strip()], via=b.get("via", ""), via_reason=b.get("via_reason", ""), knows=b.get("knows", ""))
         person, target = b.get("person", "").strip(), b.get("target", "").strip()
         role, hook, channel = b.get("role", ""), b.get("hook", ""), b.get("channel", "linkedin")
         d = None; header = ""
@@ -188,7 +212,7 @@ class App:
                 p = mine[0]
                 shape = b.get("shape") if b.get("shape") and b["shape"] != "auto" else "ask-for-intro"
                 d = DraftInput(p.name, p.position, target, role, f"{p.tier}, score {p.strength:.0f}", shape, "Intro ask to a mutual.", hook, channel, **extra)
-                header = f"INTRO via {p.name} to {b['via']}"
+                header = f"RELAY via {p.name}: ask them to ask {b['via']}" if shape == "relay" else f"INTRO via {p.name} to {b['via']}"
         if d is None:
             rc, rr, _ = classify_role(b.get("title", ""), b.get("function") or None)
             d = DraftInput(person or "there", b.get("title", ""), target, role, "not a connection; no history", "cold",
@@ -239,6 +263,7 @@ def make_handler(app: App):
                 if u.path == "/api/discover": return self._json(app.discover(q))
                 if u.path == "/api/outcomes": return self._json(app.outcomes())
                 if u.path == "/api/bridge": return self._json(app.bridge(q))
+                if u.path == "/api/relay": return self._json(app.relay(q))
                 self._json({"error": "not found"}, 404)
             except Exception as e:  # surface, do not crash the server
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)
@@ -255,6 +280,7 @@ def make_handler(app: App):
                 if u.path == "/api/draft": return self._json(app.draft(body))
                 if u.path == "/api/log": return self._json(app.log(body))
                 if u.path == "/api/enrich": return self._json(app.enrich(body))
+                if u.path == "/api/mark": return self._json(app.mark(body))
                 self._json({"error": "not found"}, 404)
             except Exception as e:
                 self._json({"error": f"{type(e).__name__}: {e}"}, 500)

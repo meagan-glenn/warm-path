@@ -122,6 +122,16 @@
     <button class="go">Find bridge</button>
   </form>
   <div id="bridge-out"></div>
+  <h3 style="font-size:14px;margin:26px 0 6px">Relay: your contact → their coworker → the target company</h3>
+  <p class="small">When your friend is at a company adjacent to the target and the useful person is their coworker, not them. Finds coworkers who overlapped with someone at the target, ranks by how easy the hallway ask is (same function, shared tenure, same office). Everything past your friend is inferred.</p>
+  <form class="row" id="f-relay">
+    <label>Your contact <input name="via" placeholder="Eduardo Rosenfeld" required></label>
+    <label>Target company <input name="target" placeholder="Wispr Flow" required></label>
+    <label>About target (disambiguate) <input name="about" placeholder="AI voice dictation, SF" style="min-width:220px"></label>
+    <label>Role you applied for <input name="role"></label>
+    <button class="go">Find relay</button>
+  </form>
+  <div id="relay-out"></div>
 </section>
 
 <section id="outcomes">
@@ -162,10 +172,11 @@
     <label>Role applied for <input id="d-role"></label>
     <label>Channel <select id="d-channel"><option>linkedin</option><option>email</option></select></label>
     <label class="wide">Opening line, as a full sentence. Why them, why now. Not "to introduce myself". <input id="d-hook" placeholder="I have used Flow daily since March and the one thing I keep hitting is…"></label>
-    <label>Shape <select id="d-shape"><option value="auto">auto (from verdict)</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>blurb</option><option>ask-for-intro</option><option>ask-if-they-know</option></select></label>
+    <label>Shape <select id="d-shape"><option value="auto">auto (from verdict)</option><option>spend</option><option>ask-for-routing</option><option>forward-note</option><option>cold</option><option>feedback</option><option>blurb</option><option>ask-for-intro</option><option>ask-if-they-know</option><option>relay</option></select></label>
     <label>Follow-up <select id="d-followup"><option value="0">first touch</option><option value="1">1: day 5 bump</option><option value="2">2: day 12 close</option></select></label>
     <label>Their title (if not in your network) <input id="d-title-in"></label>
-    <label>Via them, to (intro shapes) <input id="d-via" placeholder="Elena Verna"></label>
+    <label>Via them, to (intro shapes) / coworker to ask (relay) <input id="d-via" placeholder="Elena Verna"></label>
+    <label>Relay: who that coworker knows at the target <input id="d-knows"></label>
     <label>One line on you (for the blurb) <input id="d-me-line" placeholder="a CS-turned-product lead who fixes activation"></label>
     <label class="wide">Your link (for the blurb) <input id="d-url" placeholder="https://linkedin.com/in/you"></label>
     <label class="wide" id="d-findings-wrap" style="display:none">Findings, one line each (feedback shape)
@@ -275,8 +286,9 @@ $('#f-people').onsubmit = async e => {
   const f = new FormData(e.target);
   const r = await api('/api/people?' + q({ tier: f.get('tier'), company: f.get('company'), top: f.get('top') }));
   if (r.error) { $('#people-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
-  $('#people-out').innerHTML = `<table><tr><th>score</th><th>tier</th><th>name</th><th>company</th><th>title</th><th>why</th></tr>` +
-    r.people.map(p => `<tr><td class="num">${p.strength}</td><td>${esc(p.tier)}</td><td>${esc(p.name)}</td><td>${esc(p.company)}</td><td>${esc(p.position)}</td><td class="small">${esc(p.reasons.join('; '))}</td></tr>`).join('') + '</table>';
+  const mk = (p, f) => p.flags.includes(f) ? `<button class="ghost" style="padding:1px 6px;font-size:11px;background:var(--chip)" onclick='doMark(${JSON.stringify(p.name)},"${f}",true)'>${f} ✓</button>` : `<button class="ghost" style="padding:1px 6px;font-size:11px" onclick='doMark(${JSON.stringify(p.name)},"${f}",false)'>${f}</button>`;
+  $('#people-out').innerHTML = `<p class="small">Overrides: <b>close</b> lifts to 70, <b>vouch</b> to 85, <b>barely</b> caps at 25, <b>hub</b> means "ask them about every target." One click, persisted.</p><table><tr><th>score</th><th>tier</th><th>name</th><th>company</th><th>title</th><th>why</th><th>you say</th></tr>` +
+    r.people.map(p => `<tr><td class="num">${p.strength}</td><td>${esc(p.tier)}</td><td>${esc(p.name)}</td><td>${esc(p.company)}</td><td>${esc(p.position)}</td><td class="small">${esc(p.reasons.join('; '))}</td><td style="white-space:nowrap">${['close','vouch','barely','hub'].map(f => mk(p, f)).join(' ')}</td></tr>`).join('') + '</table>';
 };
 
 function discCard(d, company) {
@@ -383,15 +395,44 @@ $('#f-bridge').onsubmit = async e => {
     }
     h += '</div>';
   }
+  if (r.hubs && r.hubs.length) {
+    h += `<h3 style="font-size:14px;margin:18px 0 8px">Hubs you marked: ask regardless of overlap, weigh their geography</h3><div class="cards">` +
+      r.hubs.map(p => `<div class="card"><h3>${esc(p.name)}</h3><div class="sub">${esc(p.position)} · ${esc(p.company)}</div><div class="foot"><button class="ghost" onclick='openDrawer(${JSON.stringify({person: p.name, target: company, via: person, shape: "ask-if-they-know", role, header: "HUB: do they know anyone there?"})})'>Draft ask</button></div></div>`).join('') + '</div>';
+  }
   $('#bridge-out').innerHTML = h;
 };
+$('#f-relay').onsubmit = async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const via = f.get('via').trim(), target = f.get('target').trim(), role = f.get('role');
+  $('#relay-out').innerHTML = '<p class="small">pulling both rosters from the public index (first run takes a minute, then cached)…</p>';
+  const r = await api('/api/relay?' + q({ via, target, about: f.get('about') }));
+  if (r.error) { $('#relay-out').innerHTML = `<p class="small">${esc(r.error)}</p>`; return; }
+  if (r.note) { $('#relay-out').innerHTML = `<div class="empty">${esc(r.note)}</div>`; return; }
+  if (!r.relays.length) { $('#relay-out').innerHTML = `<div class="empty">No shared employers between ${esc(r.hub)} (${r.hub_size} people) and ${esc(target)} (${r.target_size}) beyond very large companies. Ask ${esc(via.split(' ')[0])} the open question instead: "anyone on your side know people at ${esc(target)}?"</div>`; return; }
+  let h = `<p class="small">${r.relays.length} relay(s) from ${r.hub_size} people at ${esc(r.hub)} × ${r.target_size} at ${esc(target)}. <b>link</b>: coworker ↔ target person (inferred). <b>close</b>: coworker ↔ ${esc(via)} (inferred).</p><div class="cards">`;
+  for (const x of r.relays) {
+    h += `<div class="card"><span class="badge b-ask-for-routing">relay</span>
+      <h3>${esc(x.hub_person.name)} <span class="small">at ${esc(r.hub)}</span> → ${esc(x.target_person.name)} <span class="small">at ${esc(target)}</span></h3>
+      <div class="sub">${esc(x.hub_person.title)} · ${esc(x.target_person.title)}</div>
+      <div class="reasons">link <b class="num">${x.link}</b>: ${esc(x.link_reason)}<br>close to ${esc(via.split(' ')[0])} <b class="num">${x.close}</b>: ${esc(x.close_reason)}</div>
+      <div class="foot"><button class="ghost" onclick='openDrawer(${JSON.stringify({person: via, target, via: x.hub_person.name, knows: x.target_person.name, via_reason: x.link_reason, shape: "relay", role, header: "RELAY: ask " + via + " to ask " + x.hub_person.name})})'>Draft ask to ${esc(via.split(' ')[0])}</button>
+      ${x.hub_person.url ? `<a href="${esc(x.hub_person.url)}" target="_blank" rel="noopener">${esc(x.hub_person.name.split(' ')[0])} ↗</a>` : ''}
+      ${x.target_person.url ? `<a href="${esc(x.target_person.url)}" target="_blank" rel="noopener">${esc(x.target_person.name.split(' ')[0])} ↗</a>` : ''}</div></div>`;
+  }
+  $('#relay-out').innerHTML = h + '</div>';
+};
+async function doMark(name, flag, remove) {
+  const r = await api('/api/mark', { method: 'POST', body: JSON.stringify({ person: name, flag, remove }) });
+  if (r.error) alert(r.error); else { $('#f-people').requestSubmit(); loadStatus(); }
+}
 
 function openDrawer(o) {
   D.person = o.person; D.target = o.target || D.target; D.via_reason = o.via_reason || '';
   $('#d-title').textContent = `Draft to ${o.person}`;
   $('#d-header').textContent = (o.header || '') + (o.target ? ` · ${o.target}` : '');
   $('#d-title-in').value = o.title || '';
-  $('#d-via').value = o.via || '';
+  $('#d-via').value = o.via || ''; $('#d-knows').value = o.knows || '';
   $('#d-shape').value = o.shape || 'auto';
   if (o.role) $('#d-role').value = o.role;
   $('#d-followup').value = o.followup || 0;
@@ -404,7 +445,7 @@ async function doDraft(llm, prompt) {
   const b = { person: D.person, target: D.target, function: D.function, aliases: D.aliases,
     role: $('#d-role').value, hook: $('#d-hook').value, channel: $('#d-channel').value, shape: $('#d-shape').value,
     followup: $('#d-followup').value, title: $('#d-title-in').value, me_line: $('#d-me-line').value, url: $('#d-url').value,
-    via: $('#d-via').value, via_reason: D.via_reason || '',
+    via: $('#d-via').value, via_reason: D.via_reason || '', knows: $('#d-knows').value,
     findings: [$('#d-f1').value, $('#d-f2').value, $('#d-f3').value], llm, prompt };
   $('#note').textContent = llm ? 'asking Claude…' : '';
   const r = await api('/api/draft', { method: 'POST', body: JSON.stringify(b) });
