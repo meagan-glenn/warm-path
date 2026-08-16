@@ -11,6 +11,7 @@
   python -m warmpath bridge "Elena Verna" --company Lovable   who of mine probably knows them
   python -m warmpath relay --via "Eduardo Rosenfeld" --target "Wispr Flow"   my contact -> their coworker -> target
   python -m warmpath mark "Santiana Brace" hub          one-click overrides: close / vouch / barely / hub
+  python -m warmpath add "Mike Aronow" --company Simile --position "GTM"   new connection before the next export
 """
 
 from __future__ import annotations
@@ -118,6 +119,18 @@ def cmd_relay(a):
         print(f"    draft: python -m warmpath draft \"{a.via}\" --target \"{a.target}\" --shape relay --via \"{x.hub_person.name}\" --hook \"...\"  (then say who they know: {x.target_person.name})")
         print()
     print("Everything past your contact is inferred from public work history. The ask to your contact should say that plainly.")
+
+
+def cmd_add(a):
+    """Add a connection by hand, for the ones that arrive between exports. Shows up as cold-untested until messages exist."""
+    from .ingest import norm_key
+    conn = _conn(a.db)
+    key = norm_key(a.url or "", a.person)
+    parts = a.person.split()
+    conn.execute("INSERT OR REPLACE INTO people VALUES (?,?,?,?,?,?,?,?,?)",
+                 (key, parts[0], " ".join(parts[1:]), a.person, a.url or "", "", a.company or "", a.position or "", a.connected or __import__("datetime").date.today().isoformat()))
+    conn.commit()
+    print(f"added {a.person} ({a.position or '?'} at {a.company or '?'}) as a connection; scored cold-untested until a thread exists. Re-ingesting a fresh export will overwrite it with the real row.")
 
 
 def cmd_mark(a):
@@ -276,6 +289,8 @@ def main(argv=None):
     s = sub.add_parser("relay"); s.add_argument("--via", required=True); s.add_argument("--target", required=True)
     s.add_argument("--about"); s.add_argument("--function", choices=["product", "cs", "gtm", "eng", "ops", "design"]); s.add_argument("--top", type=int, default=8)
     s.set_defaults(fn=cmd_relay)
+    s = sub.add_parser("add"); s.add_argument("person"); s.add_argument("--company"); s.add_argument("--position"); s.add_argument("--url"); s.add_argument("--connected", help="YYYY-MM-DD")
+    s.set_defaults(fn=cmd_add)
     s = sub.add_parser("mark"); s.add_argument("person"); s.add_argument("flag", choices=list(FLAGS)); s.add_argument("--remove", action="store_true"); s.set_defaults(fn=cmd_mark)
     s = sub.add_parser("serve"); s.add_argument("--port", type=int, default=8765); s.add_argument("--no-browser", action="store_true"); s.set_defaults(fn=cmd_serve)
     s = sub.add_parser("people"); s.add_argument("--top", type=int, default=30); s.add_argument("--tier"); s.add_argument("--company"); s.set_defaults(fn=cmd_people)
